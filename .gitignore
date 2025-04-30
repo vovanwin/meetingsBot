@@ -1,0 +1,5 @@
+.idea
+
+config/config.yml
+tools/
+deployments/local/.env
