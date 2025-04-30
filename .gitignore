@@ -3,3 +3,4 @@
 config/config.yml
 tools/
 deployments/local/.env
+bot.db
