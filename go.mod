@@ -15,6 +15,7 @@ require (
 	github.com/stretchr/testify v1.10.0
 	go.uber.org/fx v1.23.0
 	go.uber.org/zap v1.27.0
+	gopkg.in/telebot.v4 v4.0.0-beta.4
 )
 
 require (

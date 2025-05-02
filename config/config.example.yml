@@ -1,32 +1,12 @@
-
 server:
-  host: localhost
-  port: 8080
-  env: dev # prod dev local
-  context_timeout: 1m
-  read_header_timeout: 60s
-  grace_ful_timeout: 8s
+  env: local # prod dev local
 
 log:
-  level: 'DEBUG' # DEBUG INFO WARN ERROR
+  level: 'debug'
 
-PG:
-  host: localhost
-  port: 5432
-  user: default
-  password: secret
-  scheme: public
-  db: rcomv
-
-rabbit:
-  amqp_url: amqp://guest:guest@localhost:5672
-
-JWT:
-  token_ttl: 20000m
-  refresh_token_ttl: 20000m
-  sign_key: secret
-
-jasperAPI:
-  host: http://localhost:80
-  login: jasperadmin1
-  password: bitnami
+telegram:
+  token: ""
+  webhook: "bot123456"
+  public_url: "https://yourdomain.com"
+  listen: ":8080"
+  use_webhook: false

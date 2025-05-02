@@ -1,67 +1,15 @@
-# Шаблон golang приложения
+## Бот для собрания людей на мероприятия в группах телеграмма
 
-Шаблон для начала проекта на golang с использованием chi, fx, cobra и sqlc в качестве основы.
+для начала работы надо установить taskfile для вызова команд через task.
 
-## roadmap
-
-- [X] logger Slog
-- [X] CLI Command [cobra](https://github.com/spf13/cobra)
-- [X] Configuration [cleanEnv](https://github.com/ilyakaznacheev/cleanenv)
-- [X] Web [chi](https://github.com/go-chi/chi/)
-- [X] DI/IOC [fx](https://github.com/uber-go/fx)
-- [X] Database postgres
-- [X] sqlc ORM [sqlc](https://docs.sqlc.dev/en/latest/)
-- [x] codegen [ogen](https://github.com/ogen-go/ogen)
-- [X] Migrate [goose](https://github.com/pressly/goose)
-- [ ] Seed  
-- [ ] Redis
-- [ ] Temporal
-- [ ] RabbitMQ
-- [x] docker compose файлы для локлальной разработки
-- [ ] docker compose файлы для прода
-- [ ] ......
-
-## слои приложения
-
-```shell
-   - app        # application main
-     - cmd
-     - config            # config
-     - database
-      - migrations          # миграции
-     - internal          # core 
-      - module            # domain 
-       - shared          # общие файлы
-        - types          # типы данных используемых по всему приложению, сейчас тут uuid сгенерирование из cmd/gen-types
-       - user            # Модуль пользователя 
-          - controller   # папка с контроллерами. 
-          - repository   # репозитории пользователя 
-          - service      # сервисы пользователя 
-          - ...          # другие файлы по модулю пользователя 
-        - ...            # другой домен
-     - pkg                 # переиспользуемые пакеты     - ... 
-   - deployments              # ci/cd
-     - local             # docker-compose
-     - ...               # other     
-   - docs                # openapi для кодогенерации контроллеров
-     - ... 
-   - ...
+1.  установить мигратор atlas и зависимости командой
+```
+task dev-tools:install
 ```
 
-## Гайд
+2. запусти приложение в первый раз чтобы создалась БД sqlite в корне проекта bot.db
+3. запусти task `migrate:up` чтобы накотить миграции
+4. в папке config скопируй config.example.yml в config.yml и заполни конфиги, для локальной разработки достаточно и токена бота, для прода необходимо будет добавить конфиги адреса хуков
 
-1. основные команды
-
-   Для запуска приложения запусти или сбилди main.go
-   ```
-   go run app/main.go - запуск приложения
-   go run app/main.go migration up  - запуск миграций goose
-    ```
-      
-
-2. как пользоватся миграциями
 
  
-
-3. Swagger документация - В ПРОЦЕССЕ
-   

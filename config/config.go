@@ -3,10 +3,10 @@ package config
 import (
 	"log"
 	"log/slog"
-	"net"
 	"path"
 
 	"github.com/ilyakaznacheev/cleanenv"
+
 	"github.com/vovanwin/meetingsBot/pkg/validator"
 )
 
@@ -23,7 +23,7 @@ func NewConfig() (*Config, error) {
 	if err != nil {
 	}
 
-	if err := validator.NewCustomValidator().Validate(cfg); err != nil {
+	if err := validator.Validator.Struct(cfg); err != nil {
 		log.Fatalf(err.Error())
 	}
 	return cfg, nil
@@ -31,24 +31,27 @@ func NewConfig() (*Config, error) {
 
 type (
 	Config struct {
-		Server `yaml:"server"`
-		Log    `yaml:"log"`
+		Server   `yaml:"server"`
+		Log      `yaml:"log"`
+		Telegram `yaml:"telegram"`
 	}
 
 	Server struct {
-		Host string `env-required:"true" yaml:"host" env:"HOST" validate:"required"`
-		Port string `env-required:"true" yaml:"port" env:"PORT" validate:"required"`
-		Env  string `env-required:"true" yaml:"env" env:"ENV" validate:"required,oneof=local dev prod"`
+		Env string `env-required:"true" yaml:"env" env:"ENV" validate:"required,oneof=local dev prod"`
 	}
 
 	Log struct {
 		Level string `env-required:"true" yaml:"level" env:"LOG_LEVEL"  validate:"required,oneof=debug info warn error"`
 	}
-)
 
-func (c Config) Address() string {
-	return net.JoinHostPort(c.Server.Host, c.Server.Port)
-}
+	Telegram struct {
+		Token      string `env:"TG_TOKEN" env-required:"true" yaml:"token" validate:"required"`
+		Webhook    string `env:"TG_WEBHOOK_URL" yaml:"webhook"`
+		PublicURL  string `env:"TG_PUBLIC_URL" yaml:"public_url"` // адрес домена, если Webhook. Пример: https://mydomain.com
+		Listen     string `env:"TG_LISTEN" yaml:"listen" env-default:":8080"`
+		UseWebhook bool   `env:"TG_USE_WEBHOOK" yaml:"use_webhook" env-default:"false"` // true = webhook, false = polling
+	}
+)
 
 func (c Config) IsProduction() bool {
 	return c.Server.Env == "prod"

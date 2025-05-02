@@ -5,8 +5,10 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
-	"github.com/vovanwin/meetingsBot/cmd/dependency"
+	"github.com/vovanwin/meetingsBot/internal/telegramBoll"
 	"go.uber.org/fx"
+
+	"github.com/vovanwin/meetingsBot/cmd/dependency"
 )
 
 var (
@@ -24,17 +26,18 @@ var (
 
 func inject() fx.Option {
 	return fx.Options(
-		//fx.NopLogger,
+		fx.NopLogger,
 
 		fx.Provide(
 			dependency.ProvideConfig,
-		),
-		fx.Invoke(
 			dependency.ProvideInitGlobalLogger,
 		),
+
 		fx.Provide(
 			dependency.ProvideStoreClient,
 		),
+
+		telegramBoll.Module,
 	)
 }
 

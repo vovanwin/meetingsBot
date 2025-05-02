@@ -38,11 +38,8 @@ func MustInit(opts Options) {
 
 func Init(opts Options) error {
 	if err := opts.Validate(); err != nil {
-		fmt.Println("1111111111111111111111111111111111111111111")
-
 		return fmt.Errorf("validate options: %v", err)
 	}
-	fmt.Println("optsoptsoptsoptsoptsoptsoptsoptsoptsoptsoptsoptsoptsoptsoptsoptsoptsoptsoptsoptsoptsoptsoptsoptsoptsoptsopts")
 	cfg := zap.NewProductionEncoderConfig()
 	cfg.NameKey = "component"
 	cfg.TimeKey = "T"
@@ -67,7 +64,7 @@ func Init(opts Options) error {
 
 	l := zap.New(zapcore.NewTee(cores...))
 	zap.ReplaceGlobals(l)
-
+	l.Named("[logger]").Info("Старт логгера")
 	return nil
 }
 

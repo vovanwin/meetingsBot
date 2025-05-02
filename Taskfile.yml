@@ -6,9 +6,9 @@ silent: true
 vars:
   DOCKER_COMPOSE_PATHS: |
     -f ./deployments/local/docker-compose.yml
-#    -f ./deployments/local/docker-compose.jasper.yml
-#    -f ./deployments/local/docker-compose.metrics.yml
-#    -f ./deployments/local/docker-compose.temporal.yml
+  #    -f ./deployments/local/docker-compose.jasper.yml
+  #    -f ./deployments/local/docker-compose.metrics.yml
+  #    -f ./deployments/local/docker-compose.temporal.yml
   DOCKER_COMPOSE_CMD: docker compose  {{range $line := .DOCKER_COMPOSE_PATHS | splitLines -}}
     {{$line}}
     {{end}}
@@ -118,7 +118,7 @@ tasks:
 
   gen:go:
     vars:
-#      PATH: {{.TOOLS_DIR}}:$PATH
+      #      PATH: {{.TOOLS_DIR}}:$PATH
       PATH: $PATH:{{.TOOLS_DIR}}
     cmds:
       - echo "Run go generate ./..."
@@ -139,7 +139,7 @@ tasks:
       - echo "- Install dev tools"
       - for: { var: DEV_TOOLS }
         cmd: GOBIN="{{.TOOLS_DIR}}"  go install "{{ .ITEM }}"
-
+      - curl -sSf https://atlasgo.sh | sh
 
   run:
     dotenv: [ ".env" ]
@@ -150,3 +150,17 @@ tasks:
   ent:gen:
     cmds:
       - 'PATH="{{.TOOLS_DIR}}:$PATH" go generate {{.GO_MODULE}}/internal/store'
+
+  migrate:status:
+    desc: Узнать статус миграций
+    cmd: atlas migrate status   --dir "file://migrations"   --url "sqlite://bot.db?_fk=1"
+  migrate:diff:
+    desc: Сравнить миграции и модели ORM. При отличие будет сгенерирована новая миграция
+    cmd: atlas migrate diff --dir "file://migrations" --to "ent://internal/store/schema" --dev-url "sqlite://file?mode=memory&_fk=1"
+  migrate:up:
+    desc: Применить миграцию и линтер
+    cmds:
+    - task: migrate:lint
+    - atlas migrate apply --dir "file://migrations"  --url "sqlite://bot.db?_fk=1"
+  migrate:lint:
+    cmd: atlas migrate lint --dir "file://migrations" --dev-url="sqlite://file?mode=memory"  --latest=1
