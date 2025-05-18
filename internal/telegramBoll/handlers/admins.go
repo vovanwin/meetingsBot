@@ -1,63 +1,75 @@
 package handlers
 
 import (
-	"github.com/vovanwin/meetingsBot/internal/store/gen"
-	"github.com/vovanwin/meetingsBot/internal/telegramBoll/keyboards"
+	"context"
+	"github.com/vovanwin/meetingsBot/internal/telegramBoll/dto"
 	"go.uber.org/zap"
 	"gopkg.in/telebot.v4"
+
+	"github.com/vovanwin/meetingsBot/internal/telegramBoll/keyboards"
+	"github.com/vovanwin/meetingsBot/internal/telegramBoll/repository"
 )
 
 type Handlers struct {
 	*TelegramBot
-	db *gen.Database
+	rep *repository.Repo
 }
 
-func NewHandlers(bot *TelegramBot, db *gen.Database) *Handlers {
-	return &Handlers{
+var (
+	payMarkup     = telebot.ReplyMarkup{}
+	btnFree       = payMarkup.Data("Бесплатно", "TYPE_PAY", "FREE")
+	btnSplitEqual = payMarkup.Data("Разделить на всем", "TYPE_PAY", "SPLIT")
+	btnFixedPer   = payMarkup.Data("Фиксирована", "TYPE_PAY", "FIXED")
+)
+
+func NewHandlers(bot *TelegramBot, rep *repository.Repo) *Handlers {
+	payMarkup.Inline(
+		payMarkup.Row(btnFree, btnSplitEqual, btnFixedPer),
+	)
+
+	handlers := &Handlers{
 		TelegramBot: bot,
-		db:          db,
+		rep:         rep,
 	}
+	go handlers.StartActiveMeetingsUpdater()
+
+	return handlers
 }
-func (h *Handlers) RegisterAdminHandlers() {
-	// Создание нового сбора
-	h.Bot.Handle("/new_event", func(c telebot.Context) error {
-		h.Lg.Debug("Обработка события new_event")
-		// Отправка сообщения с кнопками
-		return c.Send(
-			"🏐 Новый сбор создан!\n"+
-				"Нажмите кнопку ниже, чтобы записаться:",
-			keyboards.EventKeyboard("1"),
-		)
+
+func (h *Handlers) start(c telebot.Context) error {
+	h.Lg.Debug("Обработка события start")
+	ctx := context.Background()
+	h.rep.CreateUser(ctx, dto.CreateUser{
+		ID:       c.Sender().ID,
+		Username: c.Sender().Username,
 	})
 
-	// Пример простого хендлера
-	h.Bot.Handle("/start", func(c telebot.Context) error {
-		h.Lg.Debug("Обработка события start")
-		return c.Send("Привет! Я бот 🤖")
-	})
+	c.Send("Привет! Я бот 🤖 для создания встреч и отслеживания участников")
+	rules := `📌 Правила использования бота:
 
-	h.Bot.Handle(telebot.OnText, func(c telebot.Context) error {
-		user := c.Sender()
-		text := c.Text()
-		chat := c.Chat()
+			 1. Для создания встречи:
+			    - Бот должен быть добавлен в чат с правами на создание сообщений
+			    - Создатель встречи должен быть администратором чата
 
-		// Пример логирования и проверки
-		zap.L().Info("Новое сообщение",
-			zap.String("user", user.Username),
-			zap.Int64("user_id", user.ID),
-			zap.Int64("chat_id", chat.ID),
-			zap.String("text", text),
-		)
+			 2. Настройка встречи:
+			    - Укажите описание встречи
+			    - Выберите тип оплаты (бесплатно/платно)
+			    - Для платных встреч укажите стоимость:
+			      • Фиксированная - одинаковая для всех
+			      • Поделенная - стоимость делится между участниками
 
-		// Пример простой фильтрации
-		if text == "запрещенное слово" {
-			// удалить сообщение
-			_ = c.Delete()
-			// предупредить
-			return c.Send("Нельзя писать запрещённые слова!")
-		}
+			 3. Отправка в чат:
+			    - Встречу можно отправить только в чаты, где вы администратор`
 
-		// можно ничего не отправлять, если не нужно
-		return nil
-	})
+	err := h.Bot.SetCommands([]telebot.Command{
+		{Text: "start", Description: "Начать работу"},
+		{Text: "create", Description: "Создать встречу"},
+		{Text: "edit", Description: "Редактировать встречу"},
+		{Text: "admin", Description: "Админстраторские команды"},
+	}, &telebot.CommandScope{Type: telebot.CommandScopeAllPrivateChats})
+	if err != nil {
+		h.Lg.Error("Не удалось установить команды", zap.Error(err))
+	}
+
+	return c.Send(rules, keyboards.EventStartKeyboard())
 }

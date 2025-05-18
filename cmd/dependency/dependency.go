@@ -2,14 +2,11 @@ package dependency
 
 import (
 	"context"
-	"fmt"
-
+	"github.com/vovanwin/meetingsBot/pkg/clients/sqlite"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 
 	"github.com/vovanwin/meetingsBot/config"
-	"github.com/vovanwin/meetingsBot/internal/store"
-	storegen "github.com/vovanwin/meetingsBot/internal/store/gen"
 	"github.com/vovanwin/meetingsBot/pkg/logger"
 )
 
@@ -46,56 +43,27 @@ func ProvideInitGlobalLogger(lifecycle fx.Lifecycle, cfg *config.Config) (Logger
 	return LoggerReady{}, nil
 }
 
-//func ProvideStoreClient(lifecycle fx.Lifecycle, cfg *config.Config) (*storegen.Database, error) {
-//
-//	var (
-//		client   *storegen.Client
-//		database *storegen.Database
-//	)
-//	// Регистрация OnStart/OnStop после создания клиента
-//	lifecycle.Append(fx.Hook{
-//		OnStart: func(ctx context.Context) error {
-//			client, err := store.NewSQLiteClient(store.NewSQLiteOptions(
-//				"./bot.db?cache=shared&_fk=1",
-//				store.WithIsDebug(cfg.IsDebug()),
-//			))
-//			if err != nil {
-//				return fmt.Errorf("create sqlite client: %v", err)
-//			}
-//
-//			database = storegen.NewDatabase(client)
-//			return nil
-//		},
-//		OnStop: func(ctx context.Context) error {
-//			if err := client.Close(); err != nil {
-//				return fmt.Errorf("close sqlite: %v", err)
-//			}
-//			return nil
-//		},
-//	})
-//
-//	return database, nil
-//}
-
-func ProvideStoreClient(lifecycle fx.Lifecycle, cfg *config.Config, _ LoggerReady) (*storegen.Database, error) {
-	client, err := store.NewSQLiteClient(store.NewSQLiteOptions(
-		"./bot.db?cache=shared&_fk=1",
-		store.WithIsDebug(cfg.IsDebug()),
-	))
+func ProvideStoreClient(lifecycle fx.Lifecycle, cfg *config.Config) (*sqlite.SQLiteClient, error) {
+	log := zap.L().Named("logger")
+	// собираем DSN с оптимальными параметрами
+	// создаём клиента, без ping’а — это сделаем в OnStart
+	lite, err := sqlite.ConnectSQLite(context.Background(), cfg.SQLite)
 	if err != nil {
-		return nil, fmt.Errorf("create sqlite client: %v", err)
+		return nil, err
 	}
 
-	database := storegen.NewDatabase(client)
-	// Регистрация OnStart/OnStop после создания клиента
+	// регистрируем жизненный цикл
 	lifecycle.Append(fx.Hook{
+		OnStart: func(ctx context.Context) error {
+			log.Info("Проверка соединения с SQLite")
+			// перепинговать с таймаутом
+			return lite.PingContext(ctx)
+		},
 		OnStop: func(ctx context.Context) error {
-			if err := client.Close(); err != nil {
-				return fmt.Errorf("close sqlite: %v", err)
-			}
-			return nil
+			log.Info("Закрытие соединения с SQLite")
+			return lite.Close()
 		},
 	})
 
-	return database, nil
+	return lite, nil
 }

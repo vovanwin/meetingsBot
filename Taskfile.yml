@@ -18,7 +18,8 @@ vars:
     mvdan.cc/gofumpt@v0.6.0
     github.com/kazhuravlev/options-gen/cmd/options-gen@latest
     go.uber.org/mock/mockgen@latest
-    entgo.io/ent/cmd/ent@v0.14.4
+    github.com/sqlc-dev/sqlc/cmd/sqlc@latest
+    github.com/pressly/goose/v3/cmd/goose@latest
 
   GO_MODULE: github.com/vovanwin/meetingsBot
   GO_FILES:
@@ -30,6 +31,12 @@ vars:
 
   TOOLS_DIR:
     sh: echo "$(pwd)/tools"
+
+  CLI_ARGS: -f ./deployments/local/docker-compose.yml
+
+  DB_DRIVER: sqlite
+  DB_DSN: file:./bot.db?_fk=1
+  MIGRATIONS_DIR: ./migrations
 
 tasks:
   default:
@@ -114,8 +121,10 @@ tasks:
     aliases: [ "gen" ]
     cmds:
       - task: gen:go
-      - task: ent:gen
-
+  sql:
+    cmds:
+      - echo "SQLC"
+      - "{{.TOOLS_DIR}}/sqlc generate"
   gen:go:
     vars:
       #      PATH: {{.TOOLS_DIR}}:$PATH
@@ -139,7 +148,6 @@ tasks:
       - echo "- Install dev tools"
       - for: { var: DEV_TOOLS }
         cmd: GOBIN="{{.TOOLS_DIR}}"  go install "{{ .ITEM }}"
-      - curl -sSf https://atlasgo.sh | sh
 
   run:
     dotenv: [ ".env" ]
@@ -147,20 +155,45 @@ tasks:
       - echo "- Run"
       - cd app && go run main.go
 
-  ent:gen:
+
+  # Миграции
+  migrate:init:
+    desc: Инициализировать папку с миграциями
     cmds:
-      - 'PATH="{{.TOOLS_DIR}}:$PATH" go generate {{.GO_MODULE}}/internal/store'
+      - mkdir -p {{.MIGRATIONS_DIR}}
+      - echo "Папка для миграций создана"
+
+  migrate:create:
+    desc: Создать новую миграцию
+    cmds:
+      - "{{.TOOLS_DIR}}/goose -dir {{.MIGRATIONS_DIR}} create {{.CLI_ARGS}} sql"
+
+  migrate:up:
+    desc: Применить все миграции
+    cmds:
+      - "{{.TOOLS_DIR}}/goose -dir {{.MIGRATIONS_DIR}} {{.DB_DRIVER}} '{{.DB_DSN}}' up"
+
+  migrate:up-by-one:
+    desc: Применить следующую миграцию
+    cmds:
+      - "{{.TOOLS_DIR}}/goose -dir {{.MIGRATIONS_DIR}} {{.DB_DRIVER}} '{{.DB_DSN}}' up-by-one"
+
+  migrate:down:
+    desc: Откатить последнюю миграцию
+    cmds:
+      - "{{.TOOLS_DIR}}/goose -dir {{.MIGRATIONS_DIR}} {{.DB_DRIVER}} '{{.DB_DSN}}' down"
+
+  migrate:down-to:
+    desc: Откатить миграции до указанной версии
+    cmds:
+      - "{{.TOOLS_DIR}}/goose -dir {{.MIGRATIONS_DIR}} {{.DB_DRIVER}} '{{.DB_DSN}}' down-to {{.CLI_ARGS}}"
 
   migrate:status:
-    desc: Узнать статус миграций
-    cmd: atlas migrate status   --dir "file://migrations"   --url "sqlite://bot.db?_fk=1"
-  migrate:diff:
-    desc: Сравнить миграции и модели ORM. При отличие будет сгенерирована новая миграция
-    cmd: atlas migrate diff --dir "file://migrations" --to "ent://internal/store/schema" --dev-url "sqlite://file?mode=memory&_fk=1"
-  migrate:up:
-    desc: Применить миграцию и линтер
+    desc: Показать статус миграций
     cmds:
-    - task: migrate:lint
-    - atlas migrate apply --dir "file://migrations"  --url "sqlite://bot.db?_fk=1"
-  migrate:lint:
-    cmd: atlas migrate lint --dir "file://migrations" --dev-url="sqlite://file?mode=memory"  --latest=1
+      - "{{.TOOLS_DIR}}/goose -dir {{.MIGRATIONS_DIR}} {{.DB_DRIVER}} '{{.DB_DSN}}' status"
+
+  migrate:version:
+    desc: Показать текущую версию миграции
+    cmds:
+      - "{{.TOOLS_DIR}}/goose -dir {{.MIGRATIONS_DIR}} {{.DB_DRIVER}} '{{.DB_DSN}}' version"

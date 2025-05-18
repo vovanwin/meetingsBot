@@ -1,0 +1,10 @@
+version: "2"
+sql:
+  - engine: "sqlite"
+    schema: "migrations"
+    queries: "internal/telegramBoll/queries/"
+    gen:
+      go:
+        package: "dbsqlc"
+        out: "internal/telegramBoll/dbsqlc"
+        emit_json_tags: true

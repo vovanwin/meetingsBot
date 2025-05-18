@@ -1,21 +1,23 @@
 package repository
 
 import (
+	"github.com/vovanwin/meetingsBot/internal/telegramBoll/Tdep"
+	"github.com/vovanwin/meetingsBot/internal/telegramBoll/dbsqlc"
+	"github.com/vovanwin/meetingsBot/pkg/clients/sqlite"
+	"go.uber.org/zap"
 	"log"
 
 	"go.uber.org/fx"
-	"go.uber.org/zap"
-
-	"github.com/vovanwin/meetingsBot/internal/store/gen"
 )
 
 type Options struct {
 	fx.In
-	Db *gen.Database `option:"mandatory" validate:"required"`
+	Db     *sqlite.SQLiteClient `validate:"required"`
+	Logger *Tdep.TelegramLogger
 }
 
 type Repo struct {
-	Db     *gen.Database
+	Db     *dbsqlc.Queries
 	logger *zap.Logger
 }
 
@@ -23,6 +25,6 @@ func New(opts Options) (*Repo, error) {
 	if opts.Db == nil {
 		log.Fatalf("")
 	}
-	lg := zap.L().Named("Repo")
-	return &Repo{Db: opts.Db, logger: lg}, nil
+
+	return &Repo{Db: dbsqlc.New(opts.Db), logger: opts.Logger.Lg}, nil
 }

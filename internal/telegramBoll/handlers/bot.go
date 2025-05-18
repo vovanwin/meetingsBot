@@ -2,17 +2,21 @@ package handlers
 
 import (
 	"context"
+	"github.com/vovanwin/meetingsBot/internal/telegramBoll/Tdep"
 	"log"
 	"time"
 
-	"github.com/vovanwin/meetingsBot/cmd/dependency"
-	"github.com/vovanwin/meetingsBot/config"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 	"gopkg.in/telebot.v4"
+
+	"github.com/vovanwin/meetingsBot/cmd/dependency"
+	"github.com/vovanwin/meetingsBot/config"
 )
 
 const name = "telegramBoll"
+
+var activeMeetingCodes = make(map[string]struct{})
 
 type TelegramBot struct {
 	Bot *telebot.Bot
@@ -33,9 +37,11 @@ func StartBot(lc fx.Lifecycle, bot *TelegramBot, handler *Handlers) {
 	})
 }
 
-func ProvideBot(cfg *config.Config, _ dependency.LoggerReady) (*TelegramBot, error) {
+func ProvideBot(cfg *config.Config, _ dependency.LoggerReady) (*TelegramBot, *Tdep.TelegramLogger, error) {
 	lg := zap.L().Named(name)
 	lg.Info("Инициализация бота")
+	activeMeetingCodes = make(map[string]struct{})
+
 	pref := telebot.Settings{
 		Token:  cfg.Telegram.Token,
 		Poller: nil,
@@ -59,11 +65,13 @@ func ProvideBot(cfg *config.Config, _ dependency.LoggerReady) (*TelegramBot, err
 
 	bot, err := telebot.NewBot(pref)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	return &TelegramBot{
-		Bot: bot,
-		Lg:  lg,
-	}, nil
+			Bot: bot,
+			Lg:  lg,
+		}, &Tdep.TelegramLogger{
+			Lg: lg,
+		}, nil
 }

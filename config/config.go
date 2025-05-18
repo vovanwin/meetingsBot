@@ -45,6 +45,7 @@ type (
 	}
 
 	Telegram struct {
+		SQLite     string `env:"TG_DB" env-required:"true" yaml:"db" validate:"required"`
 		Token      string `env:"TG_TOKEN" env-required:"true" yaml:"token" validate:"required"`
 		Webhook    string `env:"TG_WEBHOOK_URL" yaml:"webhook"`
 		PublicURL  string `env:"TG_PUBLIC_URL" yaml:"public_url"` // адрес домена, если Webhook. Пример: https://mydomain.com
