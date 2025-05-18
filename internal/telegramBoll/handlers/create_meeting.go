@@ -58,17 +58,19 @@ func (h *Handlers) handleCreate(c telebot.Context) error {
 
 // Обработчики сообщений
 func (h *Handlers) handleText(c telebot.Context) error {
-	h.Lg.Debug("id message", zap.Any("message", c.Message().ID))
-
-	h.Lg.Debug("Обработка события handleText", zap.String("text", c.Text()))
 	isExist := isMeetingActive(c.Text())
-	h.Lg.Debug("проверка кеш массива кодов", zap.Any("кеш", activeMeetingCodes))
-	h.Lg.Debug("проверка кеш массива кодов", zap.Any("кеш", isExist))
+	h.Lg.Debug("проверка кеш массива кодов",
+		zap.Any("activeMeetingCodes", activeMeetingCodes),
+		zap.Any("isMeetingActive", isExist),
+		zap.Any("message", c.Message().ID),
+		zap.String("text", c.Text()))
 
 	if isExist {
-		h.Lg.Debug("проверка пройдена", zap.Any("кеш", isExist))
-
+		c.Delete()
 		return h.showMeeting(c, c.Text())
+	}
+	if c.Chat().Type != telebot.ChatPrivate {
+		return nil // Игнорируем сообщение, если оно не из личного чата
 	}
 
 	// выполняется сценарий
@@ -292,16 +294,20 @@ func (h *Handlers) showMeeting(c telebot.Context, code string) error {
 	)
 
 	// Обновляем сообщение, если оно уже было
-	chatMeeting, err := h.rep.GetChatMeeting(context.Background(), c.Chat().ID, meet.ID)
+	_, err = h.rep.GetChatMeeting(context.Background(), c.Chat().ID, meet.ID)
 	if err == nil {
-		msg := &telebot.Message{
-			ID:   int(chatMeeting.MessageID),
-			Chat: &telebot.Chat{ID: chatMeeting.ChatID},
+		meetings, _ := h.rep.GetChatMeetingAllChatWithMeeting(context.Background(), meet.ID)
+		for _, v := range meetings {
+			msg := &telebot.Message{
+				ID:   int(v.MessageID),
+				Chat: &telebot.Chat{ID: v.ChatID},
+			}
+			_, err := h.Bot.Edit(msg, text, keyboards.EventKeyboard(meet.Code))
+			if err != nil {
+				h.Lg.Error("ошибка Edit", zap.Error(err), zap.Any("messageID", v.MessageID), zap.Any("ChatID", v.ChatID))
+			}
 		}
-		_, err := h.Bot.Edit(msg, text, keyboards.EventKeyboard(meet.Code))
-		if err != nil {
-			h.Lg.Error("ошибка Edit", zap.Error(err))
-		}
+
 		return nil
 	}
 

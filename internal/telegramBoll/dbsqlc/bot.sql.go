@@ -61,7 +61,7 @@ func (q *Queries) CreateChatMeeting(ctx context.Context, arg CreateChatMeetingPa
 
 const createMeeting = `-- name: CreateMeeting :one
 INSERT INTO meetings
-(max, cost, message, owner_id, type_pay, status, code)
+    (max, cost, message, owner_id, type_pay, status, code)
 VALUES (?, ?, ?, ?, ?, ?, ?)
 RETURNING id, max, cost, message, owner_id, type_pay, status, code
 `
@@ -112,18 +112,19 @@ func (q *Queries) CreateMeeting(ctx context.Context, arg CreateMeetingParams) (C
 }
 
 const createUser = `-- name: CreateUser :one
-INSERT INTO users (id, username)
-VALUES (?, ?)
+INSERT INTO users (id, username, is_owner)
+VALUES (?, ?, ?)
 RETURNING id, username, is_owner
 `
 
 type CreateUserParams struct {
 	ID       int64  `json:"id"`
 	Username string `json:"username"`
+	IsOwner  bool   `json:"is_owner"`
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
-	row := q.db.QueryRowContext(ctx, createUser, arg.ID, arg.Username)
+	row := q.db.QueryRowContext(ctx, createUser, arg.ID, arg.Username, arg.IsOwner)
 	var i User
 	err := row.Scan(&i.ID, &i.Username, &i.IsOwner)
 	return i, err
@@ -187,7 +188,8 @@ func (q *Queries) GetChat(ctx context.Context, id int64) (Chat, error) {
 const getChatMeeting = `-- name: GetChatMeeting :one
 SELECT chat_id, meeting_id, message_id
 FROM chat_meetings
-WHERE chat_id = ? AND meeting_id = ?
+WHERE chat_id = ?
+  AND meeting_id = ?
 `
 
 type GetChatMeetingParams struct {
@@ -202,8 +204,44 @@ func (q *Queries) GetChatMeeting(ctx context.Context, arg GetChatMeetingParams) 
 	return i, err
 }
 
+const getChatMeetingAllChatWithMeeting = `-- name: GetChatMeetingAllChatWithMeeting :many
+SELECT chat_id, meeting_id, message_id
+FROM chat_meetings
+WHERE meeting_id = ?
+`
+
+func (q *Queries) GetChatMeetingAllChatWithMeeting(ctx context.Context, meetingID int64) ([]ChatMeeting, error) {
+	rows, err := q.db.QueryContext(ctx, getChatMeetingAllChatWithMeeting, meetingID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ChatMeeting
+	for rows.Next() {
+		var i ChatMeeting
+		if err := rows.Scan(&i.ChatID, &i.MeetingID, &i.MessageID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getMeeting = `-- name: GetMeeting :one
-SELECT id, max, cost, message, owner_id, type_pay, status, code
+SELECT id,
+       max,
+       cost,
+       message,
+       owner_id,
+       type_pay,
+       status,
+       code
 FROM meetings
 WHERE id = ?
 `
@@ -236,7 +274,14 @@ func (q *Queries) GetMeeting(ctx context.Context, id int64) (GetMeetingRow, erro
 }
 
 const getMeetingByCode = `-- name: GetMeetingByCode :one
-SELECT id, max, cost, message, owner_id, type_pay, status, code
+SELECT id,
+       max,
+       cost,
+       message,
+       owner_id,
+       type_pay,
+       status,
+       code
 FROM meetings
 WHERE code = ?
 `
@@ -313,7 +358,8 @@ func (q *Queries) GetUser(ctx context.Context, id int64) (User, error) {
 const getUserMeeting = `-- name: GetUserMeeting :one
 SELECT user_id, meeting_id, status, count
 FROM user_meetings
-WHERE user_id = ? AND meeting_id = ?
+WHERE user_id = ?
+  AND meeting_id = ?
 `
 
 type GetUserMeetingParams struct {
@@ -370,13 +416,12 @@ func (q *Queries) GetUsers(ctx context.Context) ([]User, error) {
 }
 
 const getUsersMeetings = `-- name: GetUsersMeetings :many
-SELECT
-    um.user_id,
-    um.meeting_id,
-    um.status,
-    um.count,
-    u.username,
-    u.is_owner
+SELECT um.user_id,
+       um.meeting_id,
+       um.status,
+       um.count,
+       u.username,
+       u.is_owner
 FROM user_meetings um
          JOIN users u ON u.id = um.user_id
 WHERE um.meeting_id = ?
@@ -422,6 +467,27 @@ func (q *Queries) GetUsersMeetings(ctx context.Context, meetingID int64) ([]GetU
 	return items, nil
 }
 
+const updateChatMeeting = `-- name: UpdateChatMeeting :one
+UPDATE chat_meetings
+SET message_id=COALESCE(?1, message_id)
+WHERE meeting_id = ?2
+  and chat_id = ?3
+RETURNING chat_id, meeting_id, message_id
+`
+
+type UpdateChatMeetingParams struct {
+	MessageID      int64 `json:"message_id"`
+	WhereMeetingID int64 `json:"where_meeting_id"`
+	WhereChatID    int64 `json:"where_chat_id"`
+}
+
+func (q *Queries) UpdateChatMeeting(ctx context.Context, arg UpdateChatMeetingParams) (ChatMeeting, error) {
+	row := q.db.QueryRowContext(ctx, updateChatMeeting, arg.MessageID, arg.WhereMeetingID, arg.WhereChatID)
+	var i ChatMeeting
+	err := row.Scan(&i.ChatID, &i.MeetingID, &i.MessageID)
+	return i, err
+}
+
 const updateMeetingStatus = `-- name: UpdateMeetingStatus :exec
 UPDATE meetings
 SET status = ?
@@ -441,7 +507,8 @@ func (q *Queries) UpdateMeetingStatus(ctx context.Context, arg UpdateMeetingStat
 const updateUserMeetingCount = `-- name: UpdateUserMeetingCount :exec
 UPDATE user_meetings
 SET count = ?
-WHERE user_id = ? AND meeting_id = ?
+WHERE user_id = ?
+  AND meeting_id = ?
 `
 
 type UpdateUserMeetingCountParams struct {
@@ -458,7 +525,8 @@ func (q *Queries) UpdateUserMeetingCount(ctx context.Context, arg UpdateUserMeet
 const updateUserMeetingStatus = `-- name: UpdateUserMeetingStatus :exec
 UPDATE user_meetings
 SET status = ?
-WHERE user_id = ? AND meeting_id = ?
+WHERE user_id = ?
+  AND meeting_id = ?
 `
 
 type UpdateUserMeetingStatusParams struct {

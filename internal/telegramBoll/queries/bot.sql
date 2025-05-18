@@ -1,16 +1,30 @@
 -- name: CreateMeeting :one
 INSERT INTO meetings
-(max, cost, message, owner_id, type_pay, status, code)
+    (max, cost, message, owner_id, type_pay, status, code)
 VALUES (?, ?, ?, ?, ?, ?, ?)
 RETURNING id, max, cost, message, owner_id, type_pay, status, code;
 
 -- name: GetMeeting :one
-SELECT id, max, cost, message, owner_id, type_pay, status, code
+SELECT id,
+       max,
+       cost,
+       message,
+       owner_id,
+       type_pay,
+       status,
+       code
 FROM meetings
 WHERE id = ?;
 
 -- name: GetMeetingByCode :one
-SELECT id, max, cost, message, owner_id, type_pay, status, code
+SELECT id,
+       max,
+       cost,
+       message,
+       owner_id,
+       type_pay,
+       status,
+       code
 FROM meetings
 WHERE code = ?;
 
@@ -35,8 +49,8 @@ FROM users
 ORDER BY id;
 
 -- name: CreateUser :one
-INSERT INTO users (id, username)
-VALUES (?, ?)
+INSERT INTO users (id, username, is_owner)
+VALUES (?, ?, ?)
 RETURNING id, username, is_owner;
 
 -- name: UpdateUsername :exec
@@ -59,7 +73,8 @@ RETURNING id, title, is_meeting, is_antibot;
 -- name: GetUserMeeting :one
 SELECT user_id, meeting_id, status, count
 FROM user_meetings
-WHERE user_id = ? AND meeting_id = ?;
+WHERE user_id = ?
+  AND meeting_id = ?;
 
 -- name: CreateUserMeeting :one
 INSERT INTO user_meetings (user_id, meeting_id, status, count)
@@ -69,21 +84,22 @@ RETURNING user_id, meeting_id, status, count;
 -- name: UpdateUserMeetingStatus :exec
 UPDATE user_meetings
 SET status = ?
-WHERE user_id = ? AND meeting_id = ?;
+WHERE user_id = ?
+  AND meeting_id = ?;
 
 -- name: UpdateUserMeetingCount :exec
 UPDATE user_meetings
 SET count = ?
-WHERE user_id = ? AND meeting_id = ?;
+WHERE user_id = ?
+  AND meeting_id = ?;
 
 -- name: GetUsersMeetings :many
-SELECT
-    um.user_id,
-    um.meeting_id,
-    um.status,
-    um.count,
-    u.username,
-    u.is_owner
+SELECT um.user_id,
+       um.meeting_id,
+       um.status,
+       um.count,
+       u.username,
+       u.is_owner
 FROM user_meetings um
          JOIN users u ON u.id = um.user_id
 WHERE um.meeting_id = ?
@@ -93,9 +109,24 @@ ORDER BY um.user_id;
 -- name: GetChatMeeting :one
 SELECT chat_id, meeting_id, message_id
 FROM chat_meetings
-WHERE chat_id = ? AND meeting_id = ?;
+WHERE chat_id = ?
+  AND meeting_id = ?;
+
+
+-- name: GetChatMeetingAllChatWithMeeting :many
+SELECT chat_id, meeting_id, message_id
+FROM chat_meetings
+WHERE meeting_id = ?;
 
 -- name: CreateChatMeeting :one
 INSERT INTO chat_meetings (chat_id, meeting_id, message_id)
 VALUES (?, ?, ?)
 RETURNING chat_id, meeting_id, message_id;
+
+
+-- name: UpdateChatMeeting :one
+UPDATE chat_meetings
+SET message_id=COALESCE(sqlc.arg(message_id), message_id)
+WHERE meeting_id = @where_meeting_id
+  and chat_id = @where_chat_id
+RETURNING *;

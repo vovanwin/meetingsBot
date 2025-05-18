@@ -73,9 +73,15 @@ func (r *Repo) CreateUser(ctx context.Context, dto dto.CreateUser) (dbsqlc.User,
 		return user, nil
 	}
 
+	isOwner := false
+	if 984891975 == dto.ID { // Аккаунт админа, да id захардкожен
+		isOwner = true
+	}
+
 	p, err := r.Db.CreateUser(ctx, dbsqlc.CreateUserParams{
 		ID:       dto.ID,
 		Username: dto.Username,
+		IsOwner:  isOwner,
 	})
 
 	if err != nil {
@@ -297,4 +303,22 @@ func (r *Repo) GetChatMeeting(ctx context.Context, chatID, meetID int64) (dbsqlc
 // GetUsersMeetings возвращает всех голосовавших участников встречи вместе с данными User
 func (r *Repo) GetUsersMeetings(ctx context.Context, MeetingID int64) ([]dbsqlc.GetUsersMeetingsRow, error) {
 	return r.Db.GetUsersMeetings(ctx, MeetingID)
+}
+
+// GetUsersMeetings Обновить связь между чатом и встречей. Привязку сообщений
+func (r *Repo) UpdateChatMeeting(ctx context.Context, dto dbsqlc.UpdateChatMeetingParams) (dbsqlc.ChatMeeting, error) {
+	return r.Db.UpdateChatMeeting(ctx, dbsqlc.UpdateChatMeetingParams{
+		MessageID:      dto.MessageID,
+		WhereMeetingID: dto.WhereMeetingID,
+		WhereChatID:    dto.WhereChatID,
+	})
+}
+
+func (r *Repo) GetChatMeetingAllChatWithMeeting(ctx context.Context, meetingID int64) ([]dbsqlc.ChatMeeting, error) {
+	meeting, err := r.Db.GetChatMeetingAllChatWithMeeting(ctx, meetingID)
+	if err != nil {
+		r.logger.Error("GetChatMeetingAllChatWithMeeting:", zap.Error(err))
+		return nil, err
+	}
+	return meeting, nil
 }
