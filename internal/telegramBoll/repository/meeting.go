@@ -12,7 +12,6 @@ import (
 )
 
 func (r *Repo) CreateMeeting(ctx context.Context, dto dto.CreateMeeting) (dbsqlc.CreateMeetingRow, error) {
-
 	p, err := r.Db.CreateMeeting(ctx, dbsqlc.CreateMeetingParams{
 		Max: sql.NullInt64{
 			Int64: dto.Limit,
@@ -60,11 +59,8 @@ func (r *Repo) GetMeetingByCode(ctx context.Context, code string) (dbsqlc.GetMee
 
 func (r *Repo) CreateUser(ctx context.Context, dto dto.CreateUser) (dbsqlc.User, error) {
 	user, err := r.Db.GetUser(ctx, dto.ID)
-	if err != nil {
-		return dbsqlc.User{}, err
-	}
 
-	if user.ID != 0 {
+	if err != sql.ErrNoRows {
 		if user.Username != dto.Username {
 			err := r.Db.UpdateUsername(ctx, dbsqlc.UpdateUsernameParams{
 				Username: dto.Username,
@@ -125,9 +121,10 @@ func (r *Repo) VoteYes(ctx context.Context, userID, meetID int64) error {
 		UserID:    userID,
 		MeetingID: meetID,
 	})
-
 	if err != nil {
+		r.logger.Debug("GetUserMeeting", zap.Error(err))
 		if err == sql.ErrNoRows {
+			r.logger.Debug("GetUserMeeting ErrNoRows", zap.Error(err))
 			_, err := r.Db.CreateUserMeeting(ctx, dbsqlc.CreateUserMeetingParams{
 				UserID:    userID,
 				MeetingID: meetID,

@@ -17,9 +17,9 @@ type Handlers struct {
 
 var (
 	payMarkup     = telebot.ReplyMarkup{}
-	btnFree       = payMarkup.Data("Бесплатно", "TYPE_PAY", "FREE")
-	btnSplitEqual = payMarkup.Data("Разделить на всем", "TYPE_PAY", "SPLIT")
-	btnFixedPer   = payMarkup.Data("Фиксирована", "TYPE_PAY", "FIXED")
+	btnFree       = payMarkup.Data("Бесплатно", "TYPE_PAY", dto.TypePayБесплатно.String())
+	btnSplitEqual = payMarkup.Data("Разделить на всем", "TYPE_PAY", dto.TypePayПоровну.String())
+	btnFixedPer   = payMarkup.Data("Фиксирована", "TYPE_PAY", dto.TypePayФиксированная.String())
 )
 
 func NewHandlers(bot *TelegramBot, rep *repository.Repo) *Handlers {

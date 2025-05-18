@@ -1,12 +1,13 @@
 package keyboards
 
-import "gopkg.in/telebot.v4"
+import (
+	"github.com/vovanwin/meetingsBot/internal/telegramBoll/dto"
+	"gopkg.in/telebot.v4"
+)
 
 const (
-	Yes          = "yes"         // голос за себя
 	PlusAnother  = "plusAnother" // плюс люди со стороны
 	MinusAnother = "minus"       // минус люди со стороны
-	Cancel       = "cancel"      // отмена голоса за себя
 )
 
 // Клавиатура для записи на сбор
@@ -14,10 +15,10 @@ func EventKeyboard(eventID string) *telebot.ReplyMarkup {
 	kb := &telebot.ReplyMarkup{}
 
 	// Кнопки "+1" до "+5" и "Отмена"
-	btnPlus1 := kb.Data("✅ Иду", "vote", eventID, Yes)
+	btnPlus1 := kb.Data("✅ Иду", "vote", eventID, dto.VoteStatusУчавствует.String())
 	btnPlus2 := kb.Data("+1 - люди со стороны", "vote", eventID, PlusAnother)
 	btnMinus3 := kb.Data("-1 - люди со стороны", "vote", eventID, MinusAnother)
-	btnCancel := kb.Data("❌ Отмена личного голоса", "vote", eventID, Cancel)
+	btnCancel := kb.Data("❌ Отмена личного голоса", "vote", eventID, dto.VoteStatusНет.String())
 
 	kb.Inline(
 		kb.Row(btnPlus1),

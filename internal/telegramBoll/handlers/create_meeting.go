@@ -107,7 +107,7 @@ func (h *Handlers) handleCreateText(c telebot.Context, session *UserSession) err
 			return c.Send("Введите число")
 		}
 		draft.Amount = amount
-		if draft.PaymentType == "SPLIT" {
+		if draft.PaymentType == dto.TypePayПоровну.String() {
 			draft.Amount = (amount + draft.Limit - 1) / draft.Limit
 		}
 
@@ -150,15 +150,15 @@ func (h *Handlers) handleCreateCallback(c telebot.Context, session *UserSession,
 	draft := session.Data.(*MeetingDraft)
 
 	switch {
-	case data == "FREE":
-		draft.PaymentType = "FREE"
+	case data == dto.TypePayБесплатно.String():
+		draft.PaymentType = dto.TypePayБесплатно.String()
 		return h.finalizeMeeting(c, draft)
-	case data == "SPLIT":
-		draft.PaymentType = "SPLIT"
+	case data == dto.TypePayПоровну.String():
+		draft.PaymentType = dto.TypePayПоровну.String()
 		session.CurrentState = "payment_amount"
 		return c.Send("Введите общую сумму (пересчитывается от количества участников):")
-	case data == "FIXED":
-		draft.PaymentType = "FIXED"
+	case data == dto.TypePayФиксированная.String():
+		draft.PaymentType = dto.TypePayФиксированная.String()
 		session.CurrentState = "payment_amount"
 		return c.Send("Введите сумму с человека:")
 	}
@@ -170,9 +170,9 @@ func (h *Handlers) showPaymentOptions(c telebot.Context) error {
 	markup := &telebot.ReplyMarkup{}
 	markup.Inline(
 		markup.Row(
-			markup.Data("Бесплатно", "FREE"),
-			markup.Data("Поровну", "SPLIT"),
-			markup.Data("Фиксировано", "FIXED"),
+			markup.Data("Бесплатно", dto.TypePayБесплатно.String()),
+			markup.Data("Поровну", dto.TypePayПоровну.String()),
+			markup.Data("Фиксировано", dto.TypePayФиксированная.String()),
 		),
 	)
 	return c.Send("Выберите тип оплаты:", markup)
@@ -202,7 +202,7 @@ func (h *Handlers) finalizeMeeting(c telebot.Context, draft *MeetingDraft) error
 Лимит: %d
 Оплата: %s
 Сумма: %d`,
-		meet.Message, meet.Max.Int64, meet.TypePay, meet.Cost,
+		meet.Message.String, meet.Max.Int64, meet.TypePay, meet.Cost.Int64,
 	), keyboards.EventMeetingStartKeyboard(meet.Code))
 
 }
@@ -268,7 +268,7 @@ func (h *Handlers) showMeeting(c telebot.Context, code string) error {
 			participants = append(participants, username)
 		}
 		if v.Count.Int64 > 0 {
-			guests = append(guests, fmt.Sprintf("%s — %d гостей", username, v.Count))
+			guests = append(guests, fmt.Sprintf("%s — %d гостей", username, v.Count.Int64))
 		}
 	}
 
@@ -283,10 +283,10 @@ func (h *Handlers) showMeeting(c telebot.Context, code string) error {
 
 Гости:
 %s`,
-		meet.Message,
-		meet.Max,
+		meet.Message.String,
+		meet.Max.Int64,
 		meet.TypePay,
-		meet.Cost,
+		meet.Cost.Int64,
 		nonEmptyList(participants),
 		nonEmptyList(guests),
 	)
@@ -339,24 +339,32 @@ func (h *Handlers) VoteMeeting(c telebot.Context) error {
 	// 1 code
 	// 2 event
 	ctx := context.Background()
+
 	raw := c.Data()
 	data := strings.TrimSpace(raw)
 	dataParts := strings.Split(data, "|")
 
-	h.rep.CreateUser(context.Background(), dto.CreateUser{
+	h.Lg.Debug("функция VoteMeeting", zap.Any("dataParts", dataParts))
+
+	user, err := h.rep.CreateUser(context.Background(), dto.CreateUser{
 		ID:       c.Sender().ID,
 		Username: c.Sender().Username,
 	})
+	if err != nil {
+		h.Lg.Error("VoteStatusУчавствует", zap.Error(err), zap.Any("user", user))
+	}
 	meet, _ := h.rep.GetMeetingByCode(ctx, dataParts[1])
 
 	switch dataParts[2] {
-	case keyboards.Yes:
+	case dto.VoteStatusУчавствует.String():
+		h.Lg.Debug("VoteStatusУчавствует")
 		err := h.rep.VoteYes(ctx, c.Sender().ID, meet.ID)
 		if err != nil {
 			return c.Respond(&telebot.CallbackResponse{Text: "Неизвестная ошибка"})
 		}
 
-	case keyboards.Cancel:
+	case dto.VoteStatusНет.String():
+		h.Lg.Debug("VoteStatusНет")
 		err := h.rep.VoteCancel(ctx, dataParts[1], c.Sender().ID, meet.ID)
 		if err != nil {
 			return c.Respond(&telebot.CallbackResponse{Text: "Неизвестная ошибка"})
