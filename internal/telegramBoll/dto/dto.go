@@ -1,5 +1,7 @@
 package dto
 
+import "database/sql"
+
 //go:generate go-enum --names
 
 // StatusMeeting описывает состояние встречи.
@@ -27,6 +29,7 @@ type CreateMeeting struct {
 type CreateUser struct {
 	ID       int64
 	Username string
+	Nickname string
 }
 
 type UpdateMeetingStatus struct {
@@ -39,4 +42,10 @@ type CreateChat struct {
 	ChatTitle string
 	MeetID    int64
 	MessageID int64
+}
+type UserRow struct {
+	ID       int64          `json:"id"`
+	Username string         `json:"username"`
+	IsOwner  bool           `json:"is_owner"`
+	Nickname sql.NullString `json:"nickname"`
 }

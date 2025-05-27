@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-
 	"github.com/vovanwin/meetingsBot/internal/telegramBoll/dbsqlc"
 	"go.uber.org/zap"
 
@@ -57,42 +56,56 @@ func (r *Repo) GetMeetingByCode(ctx context.Context, code string) (dbsqlc.GetMee
 	return p, nil
 }
 
-func (r *Repo) CreateUser(ctx context.Context, dto dto.CreateUser) (dbsqlc.User, error) {
-	user, err := r.Db.GetUser(ctx, dto.ID)
+func (r *Repo) CreateUser(ctx context.Context, data dto.CreateUser) (dto.UserRow, error) {
+	user, err := r.Db.GetUser(ctx, data.ID)
 
 	if err != sql.ErrNoRows {
-		if user.Username != dto.Username {
+		if user.Username != data.Username {
 			err := r.Db.UpdateUsername(ctx, dbsqlc.UpdateUsernameParams{
-				Username: dto.Username,
-				ID:       dto.ID,
+				Username: data.Username,
+				ID:       data.ID,
 			})
 			if err != nil {
 				r.logger.Error("ошибка обновления пользователя", zap.Error(err))
 			}
 		}
-		return user, nil
+		return dto.UserRow{
+			ID:       user.ID,
+			Username: user.Username,
+			IsOwner:  user.IsOwner,
+			Nickname: user.Nickname,
+		}, nil
 	}
 
 	isOwner := false
-	if 984891975 == dto.ID { // Аккаунт админа, да id захардкожен
+	if 984891975 == data.ID { // Аккаунт админа, да id захардкожен
 		isOwner = true
 	}
 
 	p, err := r.Db.CreateUser(ctx, dbsqlc.CreateUserParams{
-		ID:       dto.ID,
-		Username: dto.Username,
+		ID:       data.ID,
+		Username: data.Username,
 		IsOwner:  isOwner,
+		Nickname: sql.NullString{
+			String: data.Nickname,
+			Valid:  true,
+		},
 	})
 
 	if err != nil {
 		r.logger.Debug("ошибка создания пользователя", zap.Error(err))
-		return p, fmt.Errorf("query problem: %v", err)
+		return dto.UserRow{}, fmt.Errorf("query problem: %v", err)
 	}
-	return p, nil
+	return dto.UserRow{
+		ID:       p.ID,
+		Username: p.Username,
+		IsOwner:  p.IsOwner,
+		Nickname: p.Nickname,
+	}, nil
 
 }
 
-func (r *Repo) GetUsers(ctx context.Context) ([]dbsqlc.User, error) {
+func (r *Repo) GetUsers(ctx context.Context) ([]dbsqlc.GetUsersRow, error) {
 	p, err := r.Db.GetUsers(ctx)
 	if err != nil {
 		r.logger.Error("ошибка получения пользователей", zap.Error(err))
@@ -101,7 +114,7 @@ func (r *Repo) GetUsers(ctx context.Context) ([]dbsqlc.User, error) {
 	return p, nil
 }
 
-func (r *Repo) GetUser(ctx context.Context, id int64) (dbsqlc.User, error) {
+func (r *Repo) GetUser(ctx context.Context, id int64) (dbsqlc.GetUserRow, error) {
 	p, err := r.Db.GetUser(ctx, id)
 	if err != nil {
 		r.logger.Error("ошибка получения пользователя", zap.Error(err))
@@ -316,6 +329,16 @@ func (r *Repo) UpdateChatMeeting(ctx context.Context, dto dbsqlc.UpdateChatMeeti
 
 func (r *Repo) GetChatMeetingAllChatWithMeeting(ctx context.Context, meetingID int64) ([]dbsqlc.ChatMeeting, error) {
 	meeting, err := r.Db.GetChatMeetingAllChatWithMeeting(ctx, meetingID)
+	if err != nil {
+		r.logger.Error("GetChatMeetingAllChatWithMeeting:", zap.Error(err))
+		return nil, err
+	}
+	return meeting, nil
+}
+
+// Получать все встречи которые обновлялись больше суток назад, чтобы переместить их в начало чата
+func (r *Repo) GetMeetingsForUpdateTime(ctx context.Context) ([]dbsqlc.GetMeetingsForUpdateTimeRow, error) {
+	meeting, err := r.Db.GetMeetingsForUpdateTime(ctx)
 	if err != nil {
 		r.logger.Error("GetChatMeetingAllChatWithMeeting:", zap.Error(err))
 		return nil, err

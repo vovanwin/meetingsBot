@@ -33,25 +33,30 @@ UPDATE meetings
 SET status = ?
 WHERE code = ?;
 
+-- name: UpdateMeetingUpdate :exec
+UPDATE meetings
+SET updated_at = ?
+WHERE id = @where_meeting_id;
+
 -- name: GetMeetingsWithStatus :many
 SELECT code
 FROM meetings
 WHERE status = ?;
 
 -- name: GetUser :one
-SELECT id, username, is_owner
+SELECT id, username, is_owner,nickname
 FROM users
 WHERE id = ?;
 
 -- name: GetUsers :many
-SELECT id, username, is_owner
+SELECT id, username, is_owner,nickname
 FROM users
 ORDER BY id;
 
 -- name: CreateUser :one
-INSERT INTO users (id, username, is_owner)
-VALUES (?, ?, ?)
-RETURNING id, username, is_owner;
+INSERT INTO users (id, username, is_owner, nickname)
+VALUES (?, ?, ?, ?)
+RETURNING id, username, is_owner,nickname;
 
 -- name: UpdateUsername :exec
 UPDATE users
@@ -99,6 +104,7 @@ SELECT um.user_id,
        um.status,
        um.count,
        u.username,
+       u.nickname,
        u.is_owner
 FROM user_meetings um
          JOIN users u ON u.id = um.user_id
@@ -130,3 +136,19 @@ SET message_id=COALESCE(sqlc.arg(message_id), message_id)
 WHERE meeting_id = @where_meeting_id
   and chat_id = @where_chat_id
 RETURNING *;
+
+-- name: GetMeetingsForUpdateTime :many
+SELECT m.id, m.code,
+       m.status, m.published_at,
+       m.closed_at, m.updated_at,
+       m.message, m.max, m.cost,
+       m.type_pay, m.owner_id, cm.chat_id,
+       cm.meeting_id, cm.message_id,
+       c.is_private,
+       u.is_owner
+FROM meetings m
+join main.chat_meetings cm on m.id = cm.meeting_id
+join main.users u on u.id = m.owner_id
+join main.chats c on c.id = cm.chat_id
+WHERE closed_at IS NULL
+  AND updated_at <= datetime('now', '-2 day');

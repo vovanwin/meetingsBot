@@ -8,6 +8,7 @@ package dbsqlc
 import (
 	"context"
 	"database/sql"
+	"time"
 )
 
 const createChat = `-- name: CreateChat :one
@@ -23,14 +24,21 @@ type CreateChatParams struct {
 	IsAntibot bool   `json:"is_antibot"`
 }
 
-func (q *Queries) CreateChat(ctx context.Context, arg CreateChatParams) (Chat, error) {
+type CreateChatRow struct {
+	ID        int64  `json:"id"`
+	Title     string `json:"title"`
+	IsMeeting bool   `json:"is_meeting"`
+	IsAntibot bool   `json:"is_antibot"`
+}
+
+func (q *Queries) CreateChat(ctx context.Context, arg CreateChatParams) (CreateChatRow, error) {
 	row := q.db.QueryRowContext(ctx, createChat,
 		arg.ID,
 		arg.Title,
 		arg.IsMeeting,
 		arg.IsAntibot,
 	)
-	var i Chat
+	var i CreateChatRow
 	err := row.Scan(
 		&i.ID,
 		&i.Title,
@@ -112,21 +120,39 @@ func (q *Queries) CreateMeeting(ctx context.Context, arg CreateMeetingParams) (C
 }
 
 const createUser = `-- name: CreateUser :one
-INSERT INTO users (id, username, is_owner)
-VALUES (?, ?, ?)
-RETURNING id, username, is_owner
+INSERT INTO users (id, username, is_owner, nickname)
+VALUES (?, ?, ?, ?)
+RETURNING id, username, is_owner,nickname
 `
 
 type CreateUserParams struct {
-	ID       int64  `json:"id"`
-	Username string `json:"username"`
-	IsOwner  bool   `json:"is_owner"`
+	ID       int64          `json:"id"`
+	Username string         `json:"username"`
+	IsOwner  bool           `json:"is_owner"`
+	Nickname sql.NullString `json:"nickname"`
 }
 
-func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
-	row := q.db.QueryRowContext(ctx, createUser, arg.ID, arg.Username, arg.IsOwner)
-	var i User
-	err := row.Scan(&i.ID, &i.Username, &i.IsOwner)
+type CreateUserRow struct {
+	ID       int64          `json:"id"`
+	Username string         `json:"username"`
+	IsOwner  bool           `json:"is_owner"`
+	Nickname sql.NullString `json:"nickname"`
+}
+
+func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (CreateUserRow, error) {
+	row := q.db.QueryRowContext(ctx, createUser,
+		arg.ID,
+		arg.Username,
+		arg.IsOwner,
+		arg.Nickname,
+	)
+	var i CreateUserRow
+	err := row.Scan(
+		&i.ID,
+		&i.Username,
+		&i.IsOwner,
+		&i.Nickname,
+	)
 	return i, err
 }
 
@@ -173,9 +199,16 @@ FROM chats
 WHERE id = ?
 `
 
-func (q *Queries) GetChat(ctx context.Context, id int64) (Chat, error) {
+type GetChatRow struct {
+	ID        int64  `json:"id"`
+	Title     string `json:"title"`
+	IsMeeting bool   `json:"is_meeting"`
+	IsAntibot bool   `json:"is_antibot"`
+}
+
+func (q *Queries) GetChat(ctx context.Context, id int64) (GetChatRow, error) {
 	row := q.db.QueryRowContext(ctx, getChat, id)
-	var i Chat
+	var i GetChatRow
 	err := row.Scan(
 		&i.ID,
 		&i.Title,
@@ -313,6 +346,82 @@ func (q *Queries) GetMeetingByCode(ctx context.Context, code string) (GetMeeting
 	return i, err
 }
 
+const getMeetingsForUpdateTime = `-- name: GetMeetingsForUpdateTime :many
+SELECT m.id, m.code,
+       m.status, m.published_at,
+       m.closed_at, m.updated_at,
+       m.message, m.max, m.cost,
+       m.type_pay, m.owner_id, cm.chat_id,
+       cm.meeting_id, cm.message_id,
+       c.is_private,
+       u.is_owner
+FROM meetings m
+join main.chat_meetings cm on m.id = cm.meeting_id
+join main.users u on u.id = m.owner_id
+join main.chats c on c.id = cm.chat_id
+WHERE closed_at IS NULL
+  AND updated_at <= datetime('now', '-2 day')
+`
+
+type GetMeetingsForUpdateTimeRow struct {
+	ID          int64          `json:"id"`
+	Code        string         `json:"code"`
+	Status      string         `json:"status"`
+	PublishedAt sql.NullTime   `json:"published_at"`
+	ClosedAt    sql.NullTime   `json:"closed_at"`
+	UpdatedAt   time.Time      `json:"updated_at"`
+	Message     sql.NullString `json:"message"`
+	Max         sql.NullInt64  `json:"max"`
+	Cost        sql.NullInt64  `json:"cost"`
+	TypePay     string         `json:"type_pay"`
+	OwnerID     int64          `json:"owner_id"`
+	ChatID      int64          `json:"chat_id"`
+	MeetingID   int64          `json:"meeting_id"`
+	MessageID   int64          `json:"message_id"`
+	IsPrivate   bool           `json:"is_private"`
+	IsOwner     bool           `json:"is_owner"`
+}
+
+func (q *Queries) GetMeetingsForUpdateTime(ctx context.Context) ([]GetMeetingsForUpdateTimeRow, error) {
+	rows, err := q.db.QueryContext(ctx, getMeetingsForUpdateTime)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetMeetingsForUpdateTimeRow
+	for rows.Next() {
+		var i GetMeetingsForUpdateTimeRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Code,
+			&i.Status,
+			&i.PublishedAt,
+			&i.ClosedAt,
+			&i.UpdatedAt,
+			&i.Message,
+			&i.Max,
+			&i.Cost,
+			&i.TypePay,
+			&i.OwnerID,
+			&i.ChatID,
+			&i.MeetingID,
+			&i.MessageID,
+			&i.IsPrivate,
+			&i.IsOwner,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getMeetingsWithStatus = `-- name: GetMeetingsWithStatus :many
 SELECT code
 FROM meetings
@@ -343,15 +452,27 @@ func (q *Queries) GetMeetingsWithStatus(ctx context.Context, status string) ([]s
 }
 
 const getUser = `-- name: GetUser :one
-SELECT id, username, is_owner
+SELECT id, username, is_owner,nickname
 FROM users
 WHERE id = ?
 `
 
-func (q *Queries) GetUser(ctx context.Context, id int64) (User, error) {
+type GetUserRow struct {
+	ID       int64          `json:"id"`
+	Username string         `json:"username"`
+	IsOwner  bool           `json:"is_owner"`
+	Nickname sql.NullString `json:"nickname"`
+}
+
+func (q *Queries) GetUser(ctx context.Context, id int64) (GetUserRow, error) {
 	row := q.db.QueryRowContext(ctx, getUser, id)
-	var i User
-	err := row.Scan(&i.ID, &i.Username, &i.IsOwner)
+	var i GetUserRow
+	err := row.Scan(
+		&i.ID,
+		&i.Username,
+		&i.IsOwner,
+		&i.Nickname,
+	)
 	return i, err
 }
 
@@ -387,21 +508,33 @@ func (q *Queries) GetUserMeeting(ctx context.Context, arg GetUserMeetingParams) 
 }
 
 const getUsers = `-- name: GetUsers :many
-SELECT id, username, is_owner
+SELECT id, username, is_owner,nickname
 FROM users
 ORDER BY id
 `
 
-func (q *Queries) GetUsers(ctx context.Context) ([]User, error) {
+type GetUsersRow struct {
+	ID       int64          `json:"id"`
+	Username string         `json:"username"`
+	IsOwner  bool           `json:"is_owner"`
+	Nickname sql.NullString `json:"nickname"`
+}
+
+func (q *Queries) GetUsers(ctx context.Context) ([]GetUsersRow, error) {
 	rows, err := q.db.QueryContext(ctx, getUsers)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []User
+	var items []GetUsersRow
 	for rows.Next() {
-		var i User
-		if err := rows.Scan(&i.ID, &i.Username, &i.IsOwner); err != nil {
+		var i GetUsersRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Username,
+			&i.IsOwner,
+			&i.Nickname,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -421,6 +554,7 @@ SELECT um.user_id,
        um.status,
        um.count,
        u.username,
+       u.nickname,
        u.is_owner
 FROM user_meetings um
          JOIN users u ON u.id = um.user_id
@@ -429,12 +563,13 @@ ORDER BY um.user_id
 `
 
 type GetUsersMeetingsRow struct {
-	UserID    int64         `json:"user_id"`
-	MeetingID int64         `json:"meeting_id"`
-	Status    string        `json:"status"`
-	Count     sql.NullInt64 `json:"count"`
-	Username  string        `json:"username"`
-	IsOwner   bool          `json:"is_owner"`
+	UserID    int64          `json:"user_id"`
+	MeetingID int64          `json:"meeting_id"`
+	Status    string         `json:"status"`
+	Count     sql.NullInt64  `json:"count"`
+	Username  string         `json:"username"`
+	Nickname  sql.NullString `json:"nickname"`
+	IsOwner   bool           `json:"is_owner"`
 }
 
 func (q *Queries) GetUsersMeetings(ctx context.Context, meetingID int64) ([]GetUsersMeetingsRow, error) {
@@ -452,6 +587,7 @@ func (q *Queries) GetUsersMeetings(ctx context.Context, meetingID int64) ([]GetU
 			&i.Status,
 			&i.Count,
 			&i.Username,
+			&i.Nickname,
 			&i.IsOwner,
 		); err != nil {
 			return nil, err
@@ -501,6 +637,22 @@ type UpdateMeetingStatusParams struct {
 
 func (q *Queries) UpdateMeetingStatus(ctx context.Context, arg UpdateMeetingStatusParams) error {
 	_, err := q.db.ExecContext(ctx, updateMeetingStatus, arg.Status, arg.Code)
+	return err
+}
+
+const updateMeetingUpdate = `-- name: UpdateMeetingUpdate :exec
+UPDATE meetings
+SET updated_at = ?
+WHERE id = ?
+`
+
+type UpdateMeetingUpdateParams struct {
+	UpdatedAt      time.Time `json:"updated_at"`
+	WhereMeetingID int64     `json:"where_meeting_id"`
+}
+
+func (q *Queries) UpdateMeetingUpdate(ctx context.Context, arg UpdateMeetingUpdateParams) error {
+	_, err := q.db.ExecContext(ctx, updateMeetingUpdate, arg.UpdatedAt, arg.WhereMeetingID)
 	return err
 }
 

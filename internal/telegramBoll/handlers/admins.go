@@ -31,7 +31,9 @@ func NewHandlers(bot *TelegramBot, rep *repository.Repo) *Handlers {
 		TelegramBot: bot,
 		rep:         rep,
 	}
+
 	go handlers.StartActiveMeetingsUpdater()
+	go handlers.StartUpdateMessageInChat()
 
 	return handlers
 }

@@ -14,6 +14,7 @@ type Chat struct {
 	Title     string `json:"title"`
 	IsMeeting bool   `json:"is_meeting"`
 	IsAntibot bool   `json:"is_antibot"`
+	IsPrivate bool   `json:"is_private"`
 }
 
 type ChatMeeting struct {
@@ -37,9 +38,10 @@ type Meeting struct {
 }
 
 type User struct {
-	ID       int64  `json:"id"`
-	Username string `json:"username"`
-	IsOwner  bool   `json:"is_owner"`
+	ID       int64          `json:"id"`
+	Nickname sql.NullString `json:"nickname"`
+	Username string         `json:"username"`
+	IsOwner  bool           `json:"is_owner"`
 }
 
 type UserMeeting struct {
