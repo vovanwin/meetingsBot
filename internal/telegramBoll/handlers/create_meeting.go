@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"github.com/vovanwin/meetingsBot/internal/telegramBoll/keyboards"
+	"github.com/vovanwin/meetingsBot/pkg/fxslog/sl"
+	"log/slog"
 	"strconv"
 	"strings"
 
@@ -59,7 +61,7 @@ func (h *Handlers) handleCreate(c telebot.Context) error {
 // Обработчики сообщений
 func (h *Handlers) handleText(c telebot.Context) error {
 	isExist := isMeetingActive(c.Text())
-	h.Lg.Debug("проверка кеш массива кодов",
+	slog.Debug("проверка кеш массива кодов",
 		zap.Any("activeMeetingCodes", activeMeetingCodes),
 		zap.Any("isMeetingActive", isExist),
 		zap.Any("message", c.Message().ID),
@@ -139,7 +141,7 @@ func (h *Handlers) handleCallback(c telebot.Context) error {
 	if !ok {
 		return c.Respond()
 	}
-	h.Lg.Debug("handleCallback", zap.Any("session", session))
+	slog.Debug("handleCallback", zap.Any("session", session))
 
 	switch session.Operation {
 	case OperationCreate:
@@ -247,13 +249,13 @@ func (h *Handlers) StartMeeting(c telebot.Context) error {
 func (h *Handlers) showMeeting(c telebot.Context, code string) error {
 	meet, err := h.rep.GetMeetingByCode(context.Background(), code)
 	if err != nil {
-		h.Lg.Error("ошибка получения встречи", zap.Error(err))
+		slog.Error("ошибка получения встречи", zap.Error(err))
 		return err
 	}
 
 	userVotes, err := h.rep.GetUsersMeetings(context.Background(), meet.ID)
 	if err != nil {
-		h.Lg.Error("ошибка получения участников", zap.Error(err))
+		slog.Error("ошибка получения участников", sl.Err(err))
 		return err
 	}
 
@@ -304,7 +306,7 @@ func (h *Handlers) showMeeting(c telebot.Context, code string) error {
 			}
 			_, err := h.Bot.Edit(msg, text, keyboards.EventKeyboard(meet.Code))
 			if err != nil {
-				h.Lg.Error("ошибка Edit", zap.Error(err), zap.Any("messageID", v.MessageID), zap.Any("ChatID", v.ChatID))
+				slog.Error("ошибка Edit", sl.Err(err), slog.Any("messageID", v.MessageID), slog.Any("ChatID", v.ChatID))
 			}
 		}
 
@@ -314,7 +316,7 @@ func (h *Handlers) showMeeting(c telebot.Context, code string) error {
 	// Иначе создаём новое
 	send, err := h.Bot.Send(c.Chat(), text, keyboards.EventKeyboard(meet.Code))
 	if err != nil {
-		h.Lg.Error("ошибка отправки сообщения", zap.Error(err))
+		slog.Error("ошибка отправки сообщения", sl.Err(err))
 		return err
 	}
 
@@ -325,7 +327,7 @@ func (h *Handlers) showMeeting(c telebot.Context, code string) error {
 		MessageID: int64(send.ID),
 	})
 	if err != nil {
-		h.Lg.Error("ошибка создания чата", zap.Error(err))
+		slog.Error("ошибка создания чата", zap.Error(err))
 		return err
 	}
 
@@ -350,27 +352,27 @@ func (h *Handlers) VoteMeeting(c telebot.Context) error {
 	data := strings.TrimSpace(raw)
 	dataParts := strings.Split(data, "|")
 
-	h.Lg.Debug("функция VoteMeeting", zap.Any("dataParts", dataParts))
+	slog.Debug("функция VoteMeeting", slog.Any("dataParts", dataParts))
 
 	user, err := h.rep.CreateUser(context.Background(), dto.CreateUser{
 		ID:       c.Sender().ID,
 		Username: c.Sender().Username,
 	})
 	if err != nil {
-		h.Lg.Error("VoteStatusУчавствует", zap.Error(err), zap.Any("user", user))
+		slog.Error("VoteStatusУчавствует", zap.Error(err), zap.Any("user", user))
 	}
 	meet, _ := h.rep.GetMeetingByCode(ctx, dataParts[1])
 
 	switch dataParts[2] {
 	case dto.VoteStatusУчавствует.String():
-		h.Lg.Debug("VoteStatusУчавствует")
+		slog.Debug("VoteStatusУчавствует")
 		err := h.rep.VoteYes(ctx, c.Sender().ID, meet.ID)
 		if err != nil {
 			return c.Respond(&telebot.CallbackResponse{Text: "Неизвестная ошибка"})
 		}
 
 	case dto.VoteStatusНет.String():
-		h.Lg.Debug("VoteStatusНет")
+		slog.Debug("VoteStatusНет")
 		err := h.rep.VoteCancel(ctx, dataParts[1], c.Sender().ID, meet.ID)
 		if err != nil {
 			return c.Respond(&telebot.CallbackResponse{Text: "Неизвестная ошибка"})

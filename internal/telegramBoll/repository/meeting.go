@@ -4,23 +4,26 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/vovanwin/meetingsBot/internal/telegramBoll/dbsqlc"
+	"github.com/vovanwin/meetingsBot/pkg/fxslog/sl"
 	"go.uber.org/zap"
+	"log/slog"
 
 	"github.com/vovanwin/meetingsBot/internal/telegramBoll/dto"
 )
 
 func (r *Repo) CreateMeeting(ctx context.Context, dto dto.CreateMeeting) (dbsqlc.CreateMeetingRow, error) {
 	p, err := r.Db.CreateMeeting(ctx, dbsqlc.CreateMeetingParams{
-		Max: sql.NullInt64{
+		Max: pgtype.Int8{
 			Int64: dto.Limit,
 			Valid: true,
 		},
-		Cost: sql.NullInt64{
+		Cost: pgtype.Int8{
 			Int64: dto.Cost,
 			Valid: true,
 		},
-		Message: sql.NullString{
+		Message: pgtype.Text{
 			String: dto.Msg,
 			Valid:  true,
 		},
@@ -31,7 +34,7 @@ func (r *Repo) CreateMeeting(ctx context.Context, dto dto.CreateMeeting) (dbsqlc
 	})
 
 	if err != nil {
-		r.logger.Error("ошибка создания встречи", zap.Error(err))
+		slog.Error("ошибка создания встречи", sl.Err(err))
 		return p, fmt.Errorf("query problem: %v", err)
 	}
 
@@ -41,7 +44,7 @@ func (r *Repo) CreateMeeting(ctx context.Context, dto dto.CreateMeeting) (dbsqlc
 func (r *Repo) GetMeeting(ctx context.Context, id int64) (dbsqlc.GetMeetingRow, error) {
 	p, err := r.Db.GetMeeting(ctx, id)
 	if err != nil {
-		r.logger.Error("ошибка получения встречи", zap.Error(err))
+		slog.Error("ошибка получения встречи", sl.Err(err))
 		return p, fmt.Errorf("query problem: %v", err)
 	}
 	return p, nil
@@ -50,7 +53,7 @@ func (r *Repo) GetMeeting(ctx context.Context, id int64) (dbsqlc.GetMeetingRow, 
 func (r *Repo) GetMeetingByCode(ctx context.Context, code string) (dbsqlc.GetMeetingByCodeRow, error) {
 	p, err := r.Db.GetMeetingByCode(ctx, code)
 	if err != nil {
-		r.logger.Error("ошибка получения встречи", zap.Error(err))
+		slog.Error("ошибка получения встречи", sl.Err(err))
 		return p, fmt.Errorf("query problem: %v", err)
 	}
 	return p, nil
@@ -63,10 +66,10 @@ func (r *Repo) CreateUser(ctx context.Context, data dto.CreateUser) (dto.UserRow
 		if user.Username != data.Username {
 			err := r.Db.UpdateUsername(ctx, dbsqlc.UpdateUsernameParams{
 				Username: data.Username,
-				ID:       data.ID,
+				UserID:   data.ID,
 			})
 			if err != nil {
-				r.logger.Error("ошибка обновления пользователя", zap.Error(err))
+				slog.Error("ошибка обновления пользователя", sl.Err(err))
 			}
 		}
 		return dto.UserRow{
@@ -86,14 +89,14 @@ func (r *Repo) CreateUser(ctx context.Context, data dto.CreateUser) (dto.UserRow
 		ID:       data.ID,
 		Username: data.Username,
 		IsOwner:  isOwner,
-		Nickname: sql.NullString{
+		Nickname: pgtype.Text{
 			String: data.Nickname,
 			Valid:  true,
 		},
 	})
 
 	if err != nil {
-		r.logger.Debug("ошибка создания пользователя", zap.Error(err))
+		slog.Error("ошибка создания пользователя", sl.Err(err))
 		return dto.UserRow{}, fmt.Errorf("query problem: %v", err)
 	}
 	return dto.UserRow{
@@ -108,7 +111,7 @@ func (r *Repo) CreateUser(ctx context.Context, data dto.CreateUser) (dto.UserRow
 func (r *Repo) GetUsers(ctx context.Context) ([]dbsqlc.GetUsersRow, error) {
 	p, err := r.Db.GetUsers(ctx)
 	if err != nil {
-		r.logger.Error("ошибка получения пользователей", zap.Error(err))
+		slog.Error("ошибка получения пользователей", sl.Err(err))
 		return p, fmt.Errorf("query problem: %v", err)
 	}
 	return p, nil
@@ -117,7 +120,7 @@ func (r *Repo) GetUsers(ctx context.Context) ([]dbsqlc.GetUsersRow, error) {
 func (r *Repo) GetUser(ctx context.Context, id int64) (dbsqlc.GetUserRow, error) {
 	p, err := r.Db.GetUser(ctx, id)
 	if err != nil {
-		r.logger.Error("ошибка получения пользователя", zap.Error(err))
+		slog.Error("ошибка получения пользователя", sl.Err(err))
 		return p, fmt.Errorf("query problem: %v", err)
 	}
 	return p, nil
@@ -129,7 +132,7 @@ func (r *Repo) UpdateMeetingStatus(ctx context.Context, dto dto.UpdateMeetingSta
 		Code:   dto.Code,
 	})
 	if err != nil {
-		r.logger.Error("ошибка обновления статуса встречи", zap.Error(err))
+		slog.Error("ошибка обновления статуса встречи", sl.Err(err))
 		return fmt.Errorf("query problem: %v", err)
 	}
 	return nil
@@ -148,10 +151,10 @@ func (r *Repo) VoteYes(ctx context.Context, userID, meetID int64) error {
 				UserID:    userID,
 				MeetingID: meetID,
 				Status:    dto.VoteStatusУчавствует.String(),
-				Count:     sql.NullInt64{},
+				Count:     pgtype.Int8{},
 			})
 			if err != nil {
-				r.logger.Error("VoteYes", zap.Error(err))
+				slog.Error("VoteYes", sl.Err(err))
 				return err
 			}
 			return nil
@@ -179,10 +182,10 @@ func (r *Repo) VoteCancel(ctx context.Context, code string, userID, meetID int64
 				UserID:    userID,
 				MeetingID: meetID,
 				Status:    dto.VoteStatusНет.String(),
-				Count:     sql.NullInt64{Valid: false},
+				Count:     pgtype.Int8{Valid: false},
 			})
 			if err != nil {
-				r.logger.Error("VoteCancel: create", zap.Error(err))
+				slog.Error("VoteCancel: create", sl.Err(err))
 			}
 			return err
 		}
@@ -195,7 +198,7 @@ func (r *Repo) VoteCancel(ctx context.Context, code string, userID, meetID int64
 		MeetingID: meetID,
 	})
 	if err != nil {
-		r.logger.Error("VoteCancel: update", zap.Error(err))
+		slog.Error("VoteCancel: update", sl.Err(err))
 		return fmt.Errorf("query problem: %w", err)
 	}
 	return nil
@@ -214,10 +217,10 @@ func (r *Repo) VotePlusAnother(ctx context.Context, code string, userID, meetID 
 				UserID:    userID,
 				MeetingID: meetID,
 				Status:    "CANCEL", // как в Ent: стартовый статус
-				Count:     sql.NullInt64{Int64: 1, Valid: true},
+				Count:     pgtype.Int8{Int64: 1, Valid: true},
 			})
 			if err != nil {
-				r.logger.Error("VotePlusAnother: create", zap.Error(err))
+				slog.Error("VotePlusAnother: create", sl.Err(err))
 			}
 			return err
 		}
@@ -226,12 +229,12 @@ func (r *Repo) VotePlusAnother(ctx context.Context, code string, userID, meetID 
 	// обновляем существующую запись
 	newCount := um.Count.Int64 + 1
 	err = r.Db.UpdateUserMeetingCount(ctx, dbsqlc.UpdateUserMeetingCountParams{
-		Count:     sql.NullInt64{Int64: newCount, Valid: true},
+		Count:     pgtype.Int8{Int64: newCount, Valid: true},
 		UserID:    userID,
 		MeetingID: meetID,
 	})
 	if err != nil {
-		r.logger.Error("VotePlusAnother: update", zap.Error(err))
+		slog.Error("VotePlusAnother: update", sl.Err(err))
 		return fmt.Errorf("query problem: %w", err)
 	}
 	return nil
@@ -252,12 +255,12 @@ func (r *Repo) VoteMinusAnother(ctx context.Context, code string, userID, meetID
 	if um.Count.Valid && um.Count.Int64 > 0 {
 		newCount := um.Count.Int64 - 1
 		err = r.Db.UpdateUserMeetingCount(ctx, dbsqlc.UpdateUserMeetingCountParams{
-			Count:     sql.NullInt64{Int64: newCount, Valid: true},
+			Count:     pgtype.Int8{Int64: newCount, Valid: true},
 			UserID:    userID,
 			MeetingID: meetID,
 		})
 		if err != nil {
-			r.logger.Error("VoteMinusAnother: update", zap.Error(err))
+			slog.Error("VoteMinusAnother: update", sl.Err(err))
 			return fmt.Errorf("query problem: %w", err)
 		}
 	}
@@ -276,7 +279,7 @@ func (r *Repo) CreateChat(ctx context.Context, dto dto.CreateChat) error {
 			IsMeeting: true,
 		})
 		if err != nil {
-			r.logger.Error("CreateChat: create", zap.Error(err))
+			slog.Error("CreateChat: create", sl.Err(err))
 			return fmt.Errorf("query problem: %w", err)
 		}
 	} else if err != nil {
@@ -295,7 +298,7 @@ func (r *Repo) CreateChat(ctx context.Context, dto dto.CreateChat) error {
 			MessageID: dto.MessageID,
 		})
 		if err != nil {
-			r.logger.Error("CreateChat: link", zap.Error(err))
+			slog.Error("CreateChat: link", sl.Err(err))
 			return fmt.Errorf("query problem: %w", err)
 		}
 	} else if err != nil {
@@ -330,7 +333,7 @@ func (r *Repo) UpdateChatMeeting(ctx context.Context, dto dbsqlc.UpdateChatMeeti
 func (r *Repo) GetChatMeetingAllChatWithMeeting(ctx context.Context, meetingID int64) ([]dbsqlc.ChatMeeting, error) {
 	meeting, err := r.Db.GetChatMeetingAllChatWithMeeting(ctx, meetingID)
 	if err != nil {
-		r.logger.Error("GetChatMeetingAllChatWithMeeting:", zap.Error(err))
+		slog.Error("GetChatMeetingAllChatWithMeeting:", sl.Err(err))
 		return nil, err
 	}
 	return meeting, nil
@@ -340,7 +343,7 @@ func (r *Repo) GetChatMeetingAllChatWithMeeting(ctx context.Context, meetingID i
 func (r *Repo) GetMeetingsForUpdateTime(ctx context.Context) ([]dbsqlc.GetMeetingsForUpdateTimeRow, error) {
 	meeting, err := r.Db.GetMeetingsForUpdateTime(ctx)
 	if err != nil {
-		r.logger.Error("GetChatMeetingAllChatWithMeeting:", zap.Error(err))
+		slog.Error("GetChatMeetingAllChatWithMeeting:", sl.Err(err))
 		return nil, err
 	}
 	return meeting, nil

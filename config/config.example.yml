@@ -2,7 +2,7 @@ server:
   env: local # prod dev local
 
 log:
-  level: 'debug'
+  level: 'DEBUG'
 
 telegram:
   token: ""
@@ -10,3 +10,11 @@ telegram:
   public_url: "https://yourdomain.com"
   listen: ":8080"
   use_webhook: false
+
+PG:
+  host: localhost
+  port: 5432
+  user: default
+  password: secret
+  scheme: public
+  db: meetings

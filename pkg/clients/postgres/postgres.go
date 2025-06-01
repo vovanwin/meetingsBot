@@ -50,13 +50,14 @@ type Postgres struct {
 
 //go:generate options-gen -out-filename=pgx_options.gen.go -from-struct=Options
 type Options struct {
-	host         string `option:"mandatory" validate:"required"`
-	user         string `option:"mandatory" validate:"required"`
-	password     string `option:"mandatory" validate:"required"`
-	db           string `option:"mandatory" validate:"required"`
-	port         string `option:"mandatory" validate:"required"`
-	scheme       string `option:"mandatory" validate:"required"`
-	isProduction bool   `option:"mandatory"`
+	logger       *slog.Logger `option:"mandatory" validate:"required"`
+	host         string       `option:"mandatory" validate:"required"`
+	user         string       `option:"mandatory" validate:"required"`
+	password     string       `option:"mandatory" validate:"required"`
+	db           string       `option:"mandatory" validate:"required"`
+	port         string       `option:"mandatory" validate:"required"`
+	scheme       string       `option:"mandatory" validate:"required"`
+	isProduction bool         `option:"mandatory"`
 }
 
 func New(opts Options) (*Postgres, error) {
@@ -94,6 +95,7 @@ func New(opts Options) (*Postgres, error) {
 	}
 	if !opts.isProduction {
 		tracer := &tracelog.TraceLog{
+			Logger:   NewLoggerTracer(opts.logger), // Логгер с трассировкой
 			LogLevel: tracelog.LogLevelTrace,
 		}
 		poolConfig.ConnConfig.Tracer = tracer

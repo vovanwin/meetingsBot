@@ -1,69 +1,39 @@
 package dependency
 
 import (
-	"context"
-	"github.com/vovanwin/meetingsBot/pkg/clients/sqlite"
-	"go.uber.org/fx"
-	"go.uber.org/zap"
-
+	"fmt"
 	"github.com/vovanwin/meetingsBot/config"
-	"github.com/vovanwin/meetingsBot/pkg/logger"
+	"github.com/vovanwin/meetingsBot/pkg/clients/postgres"
+	"github.com/vovanwin/meetingsBot/pkg/fxslog"
+	"log/slog"
 )
 
 // Специальный тип-заглушка, сигнализирующий об инициализации логгера
-type LoggerReady struct{}
 
 func ProvideConfig() (*config.Config, error) {
 	return config.NewConfig()
 }
-
-//func ProvideInitGlobalLogger(cfg *config.Config) {
-//	logger.MustInit(logger.NewOptions(
-//		cfg.Log.Level,
-//		cfg.Server.Env,
-//		logger.WithProductionMode(cfg.IsProduction()),
-//	))
-//	defer logger.Sync()
-//}
-
-func ProvideInitGlobalLogger(lifecycle fx.Lifecycle, cfg *config.Config) (LoggerReady, error) {
-	logger.MustInit(logger.NewOptions(
-		cfg.Log.Level,
-		cfg.Server.Env,
-		logger.WithProductionMode(cfg.IsProduction()),
-	))
-
-	lifecycle.Append(fx.Hook{
-		OnStop: func(ctx context.Context) error {
-			zap.L().Named("logger").Info("остановка логгера")
-			logger.Sync()
-			return nil
-		},
-	})
-	return LoggerReady{}, nil
+func ProvideLogger(config *config.Config) (*slog.Logger, error) {
+	opt := fxslog.NewOptions(fxslog.WithEnv(config.Env), fxslog.WithLevel(config.Level))
+	return fxslog.NewLogger(opt)
 }
 
-func ProvideStoreClient(lifecycle fx.Lifecycle, cfg *config.Config) (*sqlite.SQLiteClient, error) {
-	log := zap.L().Named("logger")
-	// собираем DSN с оптимальными параметрами
-	// создаём клиента, без ping’а — это сделаем в OnStart
-	lite, err := sqlite.ConnectSQLite(context.Background(), cfg.SQLite)
+func ProvidePgx(config *config.Config, logger *slog.Logger) (*postgres.Postgres, error) {
+	opt := postgres.NewOptions(
+		logger,
+		config.PG.HostPG,
+		config.PG.User,
+		config.PG.Password,
+		config.PG.DB,
+		config.PG.Port,
+		config.PG.Scheme,
+		config.IsProduction(),
+	)
+
+	connect, err := postgres.New(opt)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("create pgx connection: %w", err)
 	}
 
-	// регистрируем жизненный цикл
-	lifecycle.Append(fx.Hook{
-		OnStart: func(ctx context.Context) error {
-			log.Info("Проверка соединения с SQLite")
-			// перепинговать с таймаутом
-			return lite.PingContext(ctx)
-		},
-		OnStop: func(ctx context.Context) error {
-			log.Info("Закрытие соединения с SQLite")
-			return lite.Close()
-		},
-	})
-
-	return lite, nil
+	return connect, nil
 }

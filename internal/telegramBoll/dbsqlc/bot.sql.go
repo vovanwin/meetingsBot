@@ -75,8 +75,8 @@ RETURNING id, max, cost, message, owner_id, type_pay, status, code
 `
 
 type CreateMeetingParams struct {
-	Max     pgtype.Int4 `json:"max"`
-	Cost    pgtype.Int4 `json:"cost"`
+	Max     pgtype.Int8 `json:"max"`
+	Cost    pgtype.Int8 `json:"cost"`
 	Message pgtype.Text `json:"message"`
 	OwnerID int64       `json:"owner_id"`
 	TypePay string      `json:"type_pay"`
@@ -86,8 +86,8 @@ type CreateMeetingParams struct {
 
 type CreateMeetingRow struct {
 	ID      int64       `json:"id"`
-	Max     pgtype.Int4 `json:"max"`
-	Cost    pgtype.Int4 `json:"cost"`
+	Max     pgtype.Int8 `json:"max"`
+	Cost    pgtype.Int8 `json:"cost"`
 	Message pgtype.Text `json:"message"`
 	OwnerID int64       `json:"owner_id"`
 	TypePay string      `json:"type_pay"`
@@ -166,14 +166,14 @@ type CreateUserMeetingParams struct {
 	UserID    int64       `json:"user_id"`
 	MeetingID int64       `json:"meeting_id"`
 	Status    string      `json:"status"`
-	Count     pgtype.Int4 `json:"count"`
+	Count     pgtype.Int8 `json:"count"`
 }
 
 type CreateUserMeetingRow struct {
 	UserID    int64       `json:"user_id"`
 	MeetingID int64       `json:"meeting_id"`
 	Status    string      `json:"status"`
-	Count     pgtype.Int4 `json:"count"`
+	Count     pgtype.Int8 `json:"count"`
 }
 
 func (q *Queries) CreateUserMeeting(ctx context.Context, arg CreateUserMeetingParams) (CreateUserMeetingRow, error) {
@@ -278,8 +278,8 @@ WHERE id = $1
 
 type GetMeetingRow struct {
 	ID      int64       `json:"id"`
-	Max     pgtype.Int4 `json:"max"`
-	Cost    pgtype.Int4 `json:"cost"`
+	Max     pgtype.Int8 `json:"max"`
+	Cost    pgtype.Int8 `json:"cost"`
 	Message pgtype.Text `json:"message"`
 	OwnerID int64       `json:"owner_id"`
 	TypePay string      `json:"type_pay"`
@@ -318,8 +318,8 @@ WHERE code = $1
 
 type GetMeetingByCodeRow struct {
 	ID      int64       `json:"id"`
-	Max     pgtype.Int4 `json:"max"`
-	Cost    pgtype.Int4 `json:"cost"`
+	Max     pgtype.Int8 `json:"max"`
+	Cost    pgtype.Int8 `json:"cost"`
 	Message pgtype.Text `json:"message"`
 	OwnerID int64       `json:"owner_id"`
 	TypePay string      `json:"type_pay"`
@@ -368,8 +368,8 @@ type GetMeetingsForUpdateTimeRow struct {
 	ClosedAt    pgtype.Timestamptz `json:"closed_at"`
 	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
 	Message     pgtype.Text        `json:"message"`
-	Max         pgtype.Int4        `json:"max"`
-	Cost        pgtype.Int4        `json:"cost"`
+	Max         pgtype.Int8        `json:"max"`
+	Cost        pgtype.Int8        `json:"cost"`
 	TypePay     string             `json:"type_pay"`
 	OwnerID     int64              `json:"owner_id"`
 	ChatID      int64              `json:"chat_id"`
@@ -483,7 +483,7 @@ type GetUserMeetingRow struct {
 	UserID    int64       `json:"user_id"`
 	MeetingID int64       `json:"meeting_id"`
 	Status    string      `json:"status"`
-	Count     pgtype.Int4 `json:"count"`
+	Count     pgtype.Int8 `json:"count"`
 }
 
 func (q *Queries) GetUserMeeting(ctx context.Context, arg GetUserMeetingParams) (GetUserMeetingRow, error) {
@@ -554,7 +554,7 @@ type GetUsersMeetingsRow struct {
 	UserID    int64       `json:"user_id"`
 	MeetingID int64       `json:"meeting_id"`
 	Status    string      `json:"status"`
-	Count     pgtype.Int4 `json:"count"`
+	Count     pgtype.Int8 `json:"count"`
 	Username  string      `json:"username"`
 	Nickname  pgtype.Text `json:"nickname"`
 	IsOwner   bool        `json:"is_owner"`
@@ -649,7 +649,7 @@ WHERE user_id = $2
 `
 
 type UpdateUserMeetingCountParams struct {
-	Count     pgtype.Int4 `json:"count"`
+	Count     pgtype.Int8 `json:"count"`
 	UserID    int64       `json:"user_id"`
 	MeetingID int64       `json:"meeting_id"`
 }

@@ -5,8 +5,7 @@
 package dbsqlc
 
 import (
-	"database/sql"
-	"time"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type Chat struct {
@@ -24,29 +23,29 @@ type ChatMeeting struct {
 }
 
 type Meeting struct {
-	ID          int64          `json:"id"`
-	Code        string         `json:"code"`
-	Status      string         `json:"status"`
-	PublishedAt sql.NullTime   `json:"published_at"`
-	ClosedAt    sql.NullTime   `json:"closed_at"`
-	UpdatedAt   time.Time      `json:"updated_at"`
-	Message     sql.NullString `json:"message"`
-	Max         sql.NullInt64  `json:"max"`
-	Cost        sql.NullInt64  `json:"cost"`
-	TypePay     string         `json:"type_pay"`
-	OwnerID     int64          `json:"owner_id"`
+	ID          int64              `json:"id"`
+	Code        string             `json:"code"`
+	Status      string             `json:"status"`
+	PublishedAt pgtype.Timestamptz `json:"published_at"`
+	ClosedAt    pgtype.Timestamptz `json:"closed_at"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+	Message     pgtype.Text        `json:"message"`
+	Max         pgtype.Int8        `json:"max"`
+	Cost        pgtype.Int8        `json:"cost"`
+	TypePay     string             `json:"type_pay"`
+	OwnerID     int64              `json:"owner_id"`
 }
 
 type User struct {
-	ID       int64          `json:"id"`
-	Nickname sql.NullString `json:"nickname"`
-	Username string         `json:"username"`
-	IsOwner  bool           `json:"is_owner"`
+	ID       int64       `json:"id"`
+	Nickname pgtype.Text `json:"nickname"`
+	Username string      `json:"username"`
+	IsOwner  bool        `json:"is_owner"`
 }
 
 type UserMeeting struct {
-	UserID    int64         `json:"user_id"`
-	MeetingID int64         `json:"meeting_id"`
-	Count     sql.NullInt64 `json:"count"`
-	Status    string        `json:"status"`
+	UserID    int64       `json:"user_id"`
+	MeetingID int64       `json:"meeting_id"`
+	Count     pgtype.Int8 `json:"count"`
+	Status    string      `json:"status"`
 }

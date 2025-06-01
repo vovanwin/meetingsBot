@@ -20,8 +20,8 @@ CREATE TABLE meetings
     closed_at    TIMESTAMP WITH TIME ZONE,                    -- Время закрытия/отмены
     updated_at   TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP, -- Время последнего обновления
     message      TEXT,                                        -- Текст объявления встречи
-    max          INTEGER,                                     -- Лимит участников
-    cost         INTEGER,                                     -- Стоимость участия
+    max          BIGINT,                                     -- Лимит участников
+    cost         BIGINT,                                     -- Стоимость участия
     type_pay     TEXT     NOT NULL,                           -- Способ оплаты участия: FREE, SPLIT, FIXED
     owner_id     BIGINT   NOT NULL,                           -- ID владельца встречи (User)
     FOREIGN KEY (owner_id) REFERENCES users (id)
@@ -53,7 +53,7 @@ CREATE TABLE user_meetings
 (
     user_id    BIGINT NOT NULL,  -- ID пользователя
     meeting_id BIGINT NOT NULL,  -- ID встречи
-    count      INTEGER DEFAULT 0, -- Количество приведённых участников
+    count      BIGINT DEFAULT 0, -- Количество приведённых участников
     status     TEXT    NOT NULL,  -- Статус: CANCEL или YES
     PRIMARY KEY (user_id, meeting_id),
     FOREIGN KEY (user_id) REFERENCES users (id),

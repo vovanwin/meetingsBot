@@ -1,6 +1,6 @@
 package dto
 
-import "database/sql"
+import "github.com/jackc/pgx/v5/pgtype"
 
 //go:generate go-enum --names
 
@@ -44,8 +44,8 @@ type CreateChat struct {
 	MessageID int64
 }
 type UserRow struct {
-	ID       int64          `json:"id"`
-	Username string         `json:"username"`
-	IsOwner  bool           `json:"is_owner"`
-	Nickname sql.NullString `json:"nickname"`
+	ID       int64       `json:"id"`
+	Username string      `json:"username"`
+	IsOwner  bool        `json:"is_owner"`
+	Nickname pgtype.Text `json:"nickname"`
 }

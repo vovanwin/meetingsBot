@@ -3,7 +3,8 @@ package handlers
 import (
 	"context"
 	"github.com/vovanwin/meetingsBot/internal/telegramBoll/dto"
-	"go.uber.org/zap"
+	"github.com/vovanwin/meetingsBot/pkg/fxslog/sl"
+	"log/slog"
 	"sync"
 	"time"
 )
@@ -47,7 +48,7 @@ func (h *Handlers) refreshActiveMeetings(ctx context.Context) {
 	// Здесь ты пишешь свою логику получения кодов из базы
 	codes, err := h.rep.Db.GetMeetingsWithStatus(ctx, dto.StatusMeetingАктивная.String())
 	if err != nil {
-		h.Lg.Error("Не удалось получить коды активных встреч", zap.Error(err))
+		slog.Error("Не удалось получить коды активных встреч", sl.Err(err))
 		return
 	}
 	updateActiveMeetingCodes(codes)

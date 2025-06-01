@@ -3,18 +3,21 @@ package handlers
 import (
 	"context"
 	"fmt"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/vovanwin/meetingsBot/internal/telegramBoll/dbsqlc"
 	"github.com/vovanwin/meetingsBot/internal/telegramBoll/dto"
 	"github.com/vovanwin/meetingsBot/internal/telegramBoll/keyboards"
+	"github.com/vovanwin/meetingsBot/pkg/fxslog/sl"
 	"go.uber.org/zap"
 	"gopkg.in/telebot.v4"
+	"log/slog"
 	"time"
 )
 
 // Запускает процесс удаления сообщений в чатах и перенос их в начало чата. Событие должно быть не закрытым.
 func (h *Handlers) StartUpdateMessageInChat() {
 	ticker := time.NewTicker(time.Second * 10)
-	h.Lg.Info("запустился job StartUpdateMessageInChat")
+	slog.Info("запустился job StartUpdateMessageInChat")
 	ctx := context.Background()
 	go func() {
 		defer ticker.Stop()
@@ -27,11 +30,11 @@ func (h *Handlers) StartUpdateMessageInChat() {
 
 // refreshActiveMeetings обновляет мапу активных встреч (внутренний метод)
 func (h *Handlers) updateMessageInChat(ctx context.Context) {
-	h.Lg.Info("Отработал job StartUpdateMessageInChat")
+	slog.Info("Отработал job StartUpdateMessageInChat")
 	// Здесь ты пишешь свою логику получения кодов из базы
 	messages, err := h.rep.Db.GetMeetingsForUpdateTime(ctx)
 	if err != nil {
-		h.Lg.Error("Не удалось встречи", zap.Error(err))
+		slog.Error("Не удалось встречи", zap.Error(err))
 		return
 	}
 	for _, v := range messages {
@@ -45,7 +48,7 @@ func (h *Handlers) updateMessageInChat(ctx context.Context) {
 
 		send, err := h.Bot.Send(chat, text, keyboards.EventKeyboard(v.Code), telebot.Silent)
 		if err != nil {
-			h.Lg.Error("ошибка отправки сообщения", zap.Error(err))
+			slog.Error("ошибка отправки сообщения", zap.Error(err))
 		}
 
 		//обновляем таблицу chat_meetings хранящую ссылки на сообщения
@@ -55,7 +58,11 @@ func (h *Handlers) updateMessageInChat(ctx context.Context) {
 			WhereChatID:    v.ChatID,
 		})
 		h.rep.Db.UpdateMeetingUpdate(ctx, dbsqlc.UpdateMeetingUpdateParams{
-			UpdatedAt:      time.Now(),
+			UpdatedAt: pgtype.Timestamptz{
+				Time:             time.Now(),
+				InfinityModifier: 0,
+				Valid:            true,
+			},
 			WhereMeetingID: v.MeetingID,
 		})
 
@@ -72,7 +79,7 @@ func (h *Handlers) textMessage(meetID int64, message string, max int64, typePay 
 
 	userVotes, err := h.rep.GetUsersMeetings(context.Background(), meetID)
 	if err != nil {
-		h.Lg.Error("ошибка получения участников", zap.Error(err))
+		slog.Error("ошибка получения участников", sl.Err(err))
 		return "", err
 	}
 

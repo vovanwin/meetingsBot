@@ -3,8 +3,9 @@ package handlers
 import (
 	"context"
 	"github.com/vovanwin/meetingsBot/internal/telegramBoll/dto"
-	"go.uber.org/zap"
+	"github.com/vovanwin/meetingsBot/pkg/fxslog/sl"
 	"gopkg.in/telebot.v4"
+	"log/slog"
 
 	"github.com/vovanwin/meetingsBot/internal/telegramBoll/keyboards"
 	"github.com/vovanwin/meetingsBot/internal/telegramBoll/repository"
@@ -39,7 +40,7 @@ func NewHandlers(bot *TelegramBot, rep *repository.Repo) *Handlers {
 }
 
 func (h *Handlers) start(c telebot.Context) error {
-	h.Lg.Debug("Обработка события start")
+	slog.Debug("Обработка события start")
 	ctx := context.Background()
 	h.rep.CreateUser(ctx, dto.CreateUser{
 		ID:       c.Sender().ID,
@@ -70,7 +71,7 @@ func (h *Handlers) start(c telebot.Context) error {
 		{Text: "admin", Description: "Админстраторские команды"},
 	}, &telebot.CommandScope{Type: telebot.CommandScopeAllPrivateChats})
 	if err != nil {
-		h.Lg.Error("Не удалось установить команды", zap.Error(err))
+		slog.Error("Не удалось установить команды", sl.Err(err))
 	}
 
 	return c.Send(rules, keyboards.EventStartKeyboard())

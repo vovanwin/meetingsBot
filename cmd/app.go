@@ -26,15 +26,12 @@ var (
 
 func inject() fx.Option {
 	return fx.Options(
-		fx.NopLogger,
+		//fx.NopLogger,
 
 		fx.Provide(
 			dependency.ProvideConfig,
-			dependency.ProvideInitGlobalLogger,
-		),
-
-		fx.Provide(
-			dependency.ProvideStoreClient,
+			dependency.ProvideLogger,
+			dependency.ProvidePgx,
 		),
 
 		telegramBoll.Module,

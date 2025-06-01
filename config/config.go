@@ -34,6 +34,7 @@ type (
 		Server   `yaml:"server"`
 		Log      `yaml:"log"`
 		Telegram `yaml:"telegram"`
+		PG       `yaml:"PG"`
 	}
 
 	Server struct {
@@ -41,7 +42,16 @@ type (
 	}
 
 	Log struct {
-		Level string `env-required:"true" yaml:"level" env:"LOG_LEVEL"  validate:"required,oneof=debug info warn error"`
+		Level string `env-required:"true" yaml:"level" env:"LOG_LEVEL"  validate:"required,oneof=DEBUG INFO WARN ERROR"`
+	}
+
+	PG struct {
+		HostPG   string `env-required:"true" yaml:"host"     env:"HOST_PG"     validate:"required"`
+		Port     string `env-required:"true" yaml:"port"     env:"PORT_PG"     validate:"required"`
+		User     string `env-required:"true" yaml:"user"     env:"USER_PG"     validate:"required"`
+		Password string `env-required:"true" yaml:"password" env:"PASSWORD_PG" validate:"required"`
+		Scheme   string `env-required:"true" yaml:"scheme"   env:"SCHEME_PG"   validate:"required"`
+		DB       string `env-required:"true" yaml:"db"       env:"DBNAME_PG"   validate:"required"`
 	}
 
 	Telegram struct {

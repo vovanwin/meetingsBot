@@ -1,9 +1,8 @@
 package repository
 
 import (
-	"github.com/vovanwin/meetingsBot/internal/telegramBoll/Tdep"
 	"github.com/vovanwin/meetingsBot/internal/telegramBoll/dbsqlc"
-	"github.com/vovanwin/meetingsBot/pkg/clients/sqlite"
+	"github.com/vovanwin/meetingsBot/pkg/clients/postgres"
 	"go.uber.org/zap"
 	"log"
 
@@ -12,8 +11,7 @@ import (
 
 type Options struct {
 	fx.In
-	Db     *sqlite.SQLiteClient `validate:"required"`
-	Logger *Tdep.TelegramLogger
+	Db *postgres.Postgres `validate:"required"`
 }
 
 type Repo struct {
@@ -26,5 +24,5 @@ func New(opts Options) (*Repo, error) {
 		log.Fatalf("")
 	}
 
-	return &Repo{Db: dbsqlc.New(opts.Db), logger: opts.Logger.Lg}, nil
+	return &Repo{Db: dbsqlc.New(opts.Db.Pool)}, nil
 }
