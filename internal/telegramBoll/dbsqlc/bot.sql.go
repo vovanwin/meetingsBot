@@ -7,13 +7,13 @@ package dbsqlc
 
 import (
 	"context"
-	"database/sql"
-	"time"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createChat = `-- name: CreateChat :one
 INSERT INTO chats (id, title, is_meeting, is_antibot)
-VALUES (?, ?, ?, ?)
+VALUES ($1, $2, $3, $4)
 RETURNING id, title, is_meeting, is_antibot
 `
 
@@ -32,7 +32,7 @@ type CreateChatRow struct {
 }
 
 func (q *Queries) CreateChat(ctx context.Context, arg CreateChatParams) (CreateChatRow, error) {
-	row := q.db.QueryRowContext(ctx, createChat,
+	row := q.db.QueryRow(ctx, createChat,
 		arg.ID,
 		arg.Title,
 		arg.IsMeeting,
@@ -50,7 +50,7 @@ func (q *Queries) CreateChat(ctx context.Context, arg CreateChatParams) (CreateC
 
 const createChatMeeting = `-- name: CreateChatMeeting :one
 INSERT INTO chat_meetings (chat_id, meeting_id, message_id)
-VALUES (?, ?, ?)
+VALUES ($1, $2, $3)
 RETURNING chat_id, meeting_id, message_id
 `
 
@@ -61,7 +61,7 @@ type CreateChatMeetingParams struct {
 }
 
 func (q *Queries) CreateChatMeeting(ctx context.Context, arg CreateChatMeetingParams) (ChatMeeting, error) {
-	row := q.db.QueryRowContext(ctx, createChatMeeting, arg.ChatID, arg.MeetingID, arg.MessageID)
+	row := q.db.QueryRow(ctx, createChatMeeting, arg.ChatID, arg.MeetingID, arg.MessageID)
 	var i ChatMeeting
 	err := row.Scan(&i.ChatID, &i.MeetingID, &i.MessageID)
 	return i, err
@@ -69,34 +69,34 @@ func (q *Queries) CreateChatMeeting(ctx context.Context, arg CreateChatMeetingPa
 
 const createMeeting = `-- name: CreateMeeting :one
 INSERT INTO meetings
-    (max, cost, message, owner_id, type_pay, status, code)
-VALUES (?, ?, ?, ?, ?, ?, ?)
+(max, cost, message, owner_id, type_pay, status, code)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
 RETURNING id, max, cost, message, owner_id, type_pay, status, code
 `
 
 type CreateMeetingParams struct {
-	Max     sql.NullInt64  `json:"max"`
-	Cost    sql.NullInt64  `json:"cost"`
-	Message sql.NullString `json:"message"`
-	OwnerID int64          `json:"owner_id"`
-	TypePay string         `json:"type_pay"`
-	Status  string         `json:"status"`
-	Code    string         `json:"code"`
+	Max     pgtype.Int4 `json:"max"`
+	Cost    pgtype.Int4 `json:"cost"`
+	Message pgtype.Text `json:"message"`
+	OwnerID int64       `json:"owner_id"`
+	TypePay string      `json:"type_pay"`
+	Status  string      `json:"status"`
+	Code    string      `json:"code"`
 }
 
 type CreateMeetingRow struct {
-	ID      int64          `json:"id"`
-	Max     sql.NullInt64  `json:"max"`
-	Cost    sql.NullInt64  `json:"cost"`
-	Message sql.NullString `json:"message"`
-	OwnerID int64          `json:"owner_id"`
-	TypePay string         `json:"type_pay"`
-	Status  string         `json:"status"`
-	Code    string         `json:"code"`
+	ID      int64       `json:"id"`
+	Max     pgtype.Int4 `json:"max"`
+	Cost    pgtype.Int4 `json:"cost"`
+	Message pgtype.Text `json:"message"`
+	OwnerID int64       `json:"owner_id"`
+	TypePay string      `json:"type_pay"`
+	Status  string      `json:"status"`
+	Code    string      `json:"code"`
 }
 
 func (q *Queries) CreateMeeting(ctx context.Context, arg CreateMeetingParams) (CreateMeetingRow, error) {
-	row := q.db.QueryRowContext(ctx, createMeeting,
+	row := q.db.QueryRow(ctx, createMeeting,
 		arg.Max,
 		arg.Cost,
 		arg.Message,
@@ -121,26 +121,26 @@ func (q *Queries) CreateMeeting(ctx context.Context, arg CreateMeetingParams) (C
 
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (id, username, is_owner, nickname)
-VALUES (?, ?, ?, ?)
+VALUES ($1, $2, $3, $4)
 RETURNING id, username, is_owner,nickname
 `
 
 type CreateUserParams struct {
-	ID       int64          `json:"id"`
-	Username string         `json:"username"`
-	IsOwner  bool           `json:"is_owner"`
-	Nickname sql.NullString `json:"nickname"`
+	ID       int64       `json:"id"`
+	Username string      `json:"username"`
+	IsOwner  bool        `json:"is_owner"`
+	Nickname pgtype.Text `json:"nickname"`
 }
 
 type CreateUserRow struct {
-	ID       int64          `json:"id"`
-	Username string         `json:"username"`
-	IsOwner  bool           `json:"is_owner"`
-	Nickname sql.NullString `json:"nickname"`
+	ID       int64       `json:"id"`
+	Username string      `json:"username"`
+	IsOwner  bool        `json:"is_owner"`
+	Nickname pgtype.Text `json:"nickname"`
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (CreateUserRow, error) {
-	row := q.db.QueryRowContext(ctx, createUser,
+	row := q.db.QueryRow(ctx, createUser,
 		arg.ID,
 		arg.Username,
 		arg.IsOwner,
@@ -158,26 +158,26 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (CreateU
 
 const createUserMeeting = `-- name: CreateUserMeeting :one
 INSERT INTO user_meetings (user_id, meeting_id, status, count)
-VALUES (?, ?, ?, ?)
+VALUES ($1, $2, $3, $4)
 RETURNING user_id, meeting_id, status, count
 `
 
 type CreateUserMeetingParams struct {
-	UserID    int64         `json:"user_id"`
-	MeetingID int64         `json:"meeting_id"`
-	Status    string        `json:"status"`
-	Count     sql.NullInt64 `json:"count"`
+	UserID    int64       `json:"user_id"`
+	MeetingID int64       `json:"meeting_id"`
+	Status    string      `json:"status"`
+	Count     pgtype.Int4 `json:"count"`
 }
 
 type CreateUserMeetingRow struct {
-	UserID    int64         `json:"user_id"`
-	MeetingID int64         `json:"meeting_id"`
-	Status    string        `json:"status"`
-	Count     sql.NullInt64 `json:"count"`
+	UserID    int64       `json:"user_id"`
+	MeetingID int64       `json:"meeting_id"`
+	Status    string      `json:"status"`
+	Count     pgtype.Int4 `json:"count"`
 }
 
 func (q *Queries) CreateUserMeeting(ctx context.Context, arg CreateUserMeetingParams) (CreateUserMeetingRow, error) {
-	row := q.db.QueryRowContext(ctx, createUserMeeting,
+	row := q.db.QueryRow(ctx, createUserMeeting,
 		arg.UserID,
 		arg.MeetingID,
 		arg.Status,
@@ -196,7 +196,7 @@ func (q *Queries) CreateUserMeeting(ctx context.Context, arg CreateUserMeetingPa
 const getChat = `-- name: GetChat :one
 SELECT id, title, is_meeting, is_antibot
 FROM chats
-WHERE id = ?
+WHERE id = $1
 `
 
 type GetChatRow struct {
@@ -206,8 +206,8 @@ type GetChatRow struct {
 	IsAntibot bool   `json:"is_antibot"`
 }
 
-func (q *Queries) GetChat(ctx context.Context, id int64) (GetChatRow, error) {
-	row := q.db.QueryRowContext(ctx, getChat, id)
+func (q *Queries) GetChat(ctx context.Context, chatID int64) (GetChatRow, error) {
+	row := q.db.QueryRow(ctx, getChat, chatID)
 	var i GetChatRow
 	err := row.Scan(
 		&i.ID,
@@ -221,8 +221,8 @@ func (q *Queries) GetChat(ctx context.Context, id int64) (GetChatRow, error) {
 const getChatMeeting = `-- name: GetChatMeeting :one
 SELECT chat_id, meeting_id, message_id
 FROM chat_meetings
-WHERE chat_id = ?
-  AND meeting_id = ?
+WHERE chat_id = $1
+  AND meeting_id = $2
 `
 
 type GetChatMeetingParams struct {
@@ -231,7 +231,7 @@ type GetChatMeetingParams struct {
 }
 
 func (q *Queries) GetChatMeeting(ctx context.Context, arg GetChatMeetingParams) (ChatMeeting, error) {
-	row := q.db.QueryRowContext(ctx, getChatMeeting, arg.ChatID, arg.MeetingID)
+	row := q.db.QueryRow(ctx, getChatMeeting, arg.ChatID, arg.MeetingID)
 	var i ChatMeeting
 	err := row.Scan(&i.ChatID, &i.MeetingID, &i.MessageID)
 	return i, err
@@ -240,11 +240,11 @@ func (q *Queries) GetChatMeeting(ctx context.Context, arg GetChatMeetingParams) 
 const getChatMeetingAllChatWithMeeting = `-- name: GetChatMeetingAllChatWithMeeting :many
 SELECT chat_id, meeting_id, message_id
 FROM chat_meetings
-WHERE meeting_id = ?
+WHERE meeting_id = $1
 `
 
 func (q *Queries) GetChatMeetingAllChatWithMeeting(ctx context.Context, meetingID int64) ([]ChatMeeting, error) {
-	rows, err := q.db.QueryContext(ctx, getChatMeetingAllChatWithMeeting, meetingID)
+	rows, err := q.db.Query(ctx, getChatMeetingAllChatWithMeeting, meetingID)
 	if err != nil {
 		return nil, err
 	}
@@ -256,9 +256,6 @@ func (q *Queries) GetChatMeetingAllChatWithMeeting(ctx context.Context, meetingI
 			return nil, err
 		}
 		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -276,22 +273,22 @@ SELECT id,
        status,
        code
 FROM meetings
-WHERE id = ?
+WHERE id = $1
 `
 
 type GetMeetingRow struct {
-	ID      int64          `json:"id"`
-	Max     sql.NullInt64  `json:"max"`
-	Cost    sql.NullInt64  `json:"cost"`
-	Message sql.NullString `json:"message"`
-	OwnerID int64          `json:"owner_id"`
-	TypePay string         `json:"type_pay"`
-	Status  string         `json:"status"`
-	Code    string         `json:"code"`
+	ID      int64       `json:"id"`
+	Max     pgtype.Int4 `json:"max"`
+	Cost    pgtype.Int4 `json:"cost"`
+	Message pgtype.Text `json:"message"`
+	OwnerID int64       `json:"owner_id"`
+	TypePay string      `json:"type_pay"`
+	Status  string      `json:"status"`
+	Code    string      `json:"code"`
 }
 
-func (q *Queries) GetMeeting(ctx context.Context, id int64) (GetMeetingRow, error) {
-	row := q.db.QueryRowContext(ctx, getMeeting, id)
+func (q *Queries) GetMeeting(ctx context.Context, meetingID int64) (GetMeetingRow, error) {
+	row := q.db.QueryRow(ctx, getMeeting, meetingID)
 	var i GetMeetingRow
 	err := row.Scan(
 		&i.ID,
@@ -316,22 +313,22 @@ SELECT id,
        status,
        code
 FROM meetings
-WHERE code = ?
+WHERE code = $1
 `
 
 type GetMeetingByCodeRow struct {
-	ID      int64          `json:"id"`
-	Max     sql.NullInt64  `json:"max"`
-	Cost    sql.NullInt64  `json:"cost"`
-	Message sql.NullString `json:"message"`
-	OwnerID int64          `json:"owner_id"`
-	TypePay string         `json:"type_pay"`
-	Status  string         `json:"status"`
-	Code    string         `json:"code"`
+	ID      int64       `json:"id"`
+	Max     pgtype.Int4 `json:"max"`
+	Cost    pgtype.Int4 `json:"cost"`
+	Message pgtype.Text `json:"message"`
+	OwnerID int64       `json:"owner_id"`
+	TypePay string      `json:"type_pay"`
+	Status  string      `json:"status"`
+	Code    string      `json:"code"`
 }
 
 func (q *Queries) GetMeetingByCode(ctx context.Context, code string) (GetMeetingByCodeRow, error) {
-	row := q.db.QueryRowContext(ctx, getMeetingByCode, code)
+	row := q.db.QueryRow(ctx, getMeetingByCode, code)
 	var i GetMeetingByCodeRow
 	err := row.Scan(
 		&i.ID,
@@ -356,34 +353,34 @@ SELECT m.id, m.code,
        c.is_private,
        u.is_owner
 FROM meetings m
-join main.chat_meetings cm on m.id = cm.meeting_id
-join main.users u on u.id = m.owner_id
-join main.chats c on c.id = cm.chat_id
+join chat_meetings cm on m.id = cm.meeting_id
+join users u on u.id = m.owner_id
+join chats c on c.id = cm.chat_id
 WHERE closed_at IS NULL
   AND updated_at <= datetime('now', '-2 day')
 `
 
 type GetMeetingsForUpdateTimeRow struct {
-	ID          int64          `json:"id"`
-	Code        string         `json:"code"`
-	Status      string         `json:"status"`
-	PublishedAt sql.NullTime   `json:"published_at"`
-	ClosedAt    sql.NullTime   `json:"closed_at"`
-	UpdatedAt   time.Time      `json:"updated_at"`
-	Message     sql.NullString `json:"message"`
-	Max         sql.NullInt64  `json:"max"`
-	Cost        sql.NullInt64  `json:"cost"`
-	TypePay     string         `json:"type_pay"`
-	OwnerID     int64          `json:"owner_id"`
-	ChatID      int64          `json:"chat_id"`
-	MeetingID   int64          `json:"meeting_id"`
-	MessageID   int64          `json:"message_id"`
-	IsPrivate   bool           `json:"is_private"`
-	IsOwner     bool           `json:"is_owner"`
+	ID          int64              `json:"id"`
+	Code        string             `json:"code"`
+	Status      string             `json:"status"`
+	PublishedAt pgtype.Timestamptz `json:"published_at"`
+	ClosedAt    pgtype.Timestamptz `json:"closed_at"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+	Message     pgtype.Text        `json:"message"`
+	Max         pgtype.Int4        `json:"max"`
+	Cost        pgtype.Int4        `json:"cost"`
+	TypePay     string             `json:"type_pay"`
+	OwnerID     int64              `json:"owner_id"`
+	ChatID      int64              `json:"chat_id"`
+	MeetingID   int64              `json:"meeting_id"`
+	MessageID   int64              `json:"message_id"`
+	IsPrivate   bool               `json:"is_private"`
+	IsOwner     bool               `json:"is_owner"`
 }
 
 func (q *Queries) GetMeetingsForUpdateTime(ctx context.Context) ([]GetMeetingsForUpdateTimeRow, error) {
-	rows, err := q.db.QueryContext(ctx, getMeetingsForUpdateTime)
+	rows, err := q.db.Query(ctx, getMeetingsForUpdateTime)
 	if err != nil {
 		return nil, err
 	}
@@ -413,9 +410,6 @@ func (q *Queries) GetMeetingsForUpdateTime(ctx context.Context) ([]GetMeetingsFo
 		}
 		items = append(items, i)
 	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
@@ -425,11 +419,11 @@ func (q *Queries) GetMeetingsForUpdateTime(ctx context.Context) ([]GetMeetingsFo
 const getMeetingsWithStatus = `-- name: GetMeetingsWithStatus :many
 SELECT code
 FROM meetings
-WHERE status = ?
+WHERE status = $1
 `
 
 func (q *Queries) GetMeetingsWithStatus(ctx context.Context, status string) ([]string, error) {
-	rows, err := q.db.QueryContext(ctx, getMeetingsWithStatus, status)
+	rows, err := q.db.Query(ctx, getMeetingsWithStatus, status)
 	if err != nil {
 		return nil, err
 	}
@@ -442,9 +436,6 @@ func (q *Queries) GetMeetingsWithStatus(ctx context.Context, status string) ([]s
 		}
 		items = append(items, code)
 	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
@@ -454,18 +445,18 @@ func (q *Queries) GetMeetingsWithStatus(ctx context.Context, status string) ([]s
 const getUser = `-- name: GetUser :one
 SELECT id, username, is_owner,nickname
 FROM users
-WHERE id = ?
+WHERE id = $1
 `
 
 type GetUserRow struct {
-	ID       int64          `json:"id"`
-	Username string         `json:"username"`
-	IsOwner  bool           `json:"is_owner"`
-	Nickname sql.NullString `json:"nickname"`
+	ID       int64       `json:"id"`
+	Username string      `json:"username"`
+	IsOwner  bool        `json:"is_owner"`
+	Nickname pgtype.Text `json:"nickname"`
 }
 
-func (q *Queries) GetUser(ctx context.Context, id int64) (GetUserRow, error) {
-	row := q.db.QueryRowContext(ctx, getUser, id)
+func (q *Queries) GetUser(ctx context.Context, userID int64) (GetUserRow, error) {
+	row := q.db.QueryRow(ctx, getUser, userID)
 	var i GetUserRow
 	err := row.Scan(
 		&i.ID,
@@ -479,8 +470,8 @@ func (q *Queries) GetUser(ctx context.Context, id int64) (GetUserRow, error) {
 const getUserMeeting = `-- name: GetUserMeeting :one
 SELECT user_id, meeting_id, status, count
 FROM user_meetings
-WHERE user_id = ?
-  AND meeting_id = ?
+WHERE user_id = $1
+  AND meeting_id = $2
 `
 
 type GetUserMeetingParams struct {
@@ -489,14 +480,14 @@ type GetUserMeetingParams struct {
 }
 
 type GetUserMeetingRow struct {
-	UserID    int64         `json:"user_id"`
-	MeetingID int64         `json:"meeting_id"`
-	Status    string        `json:"status"`
-	Count     sql.NullInt64 `json:"count"`
+	UserID    int64       `json:"user_id"`
+	MeetingID int64       `json:"meeting_id"`
+	Status    string      `json:"status"`
+	Count     pgtype.Int4 `json:"count"`
 }
 
 func (q *Queries) GetUserMeeting(ctx context.Context, arg GetUserMeetingParams) (GetUserMeetingRow, error) {
-	row := q.db.QueryRowContext(ctx, getUserMeeting, arg.UserID, arg.MeetingID)
+	row := q.db.QueryRow(ctx, getUserMeeting, arg.UserID, arg.MeetingID)
 	var i GetUserMeetingRow
 	err := row.Scan(
 		&i.UserID,
@@ -514,14 +505,14 @@ ORDER BY id
 `
 
 type GetUsersRow struct {
-	ID       int64          `json:"id"`
-	Username string         `json:"username"`
-	IsOwner  bool           `json:"is_owner"`
-	Nickname sql.NullString `json:"nickname"`
+	ID       int64       `json:"id"`
+	Username string      `json:"username"`
+	IsOwner  bool        `json:"is_owner"`
+	Nickname pgtype.Text `json:"nickname"`
 }
 
 func (q *Queries) GetUsers(ctx context.Context) ([]GetUsersRow, error) {
-	rows, err := q.db.QueryContext(ctx, getUsers)
+	rows, err := q.db.Query(ctx, getUsers)
 	if err != nil {
 		return nil, err
 	}
@@ -539,9 +530,6 @@ func (q *Queries) GetUsers(ctx context.Context) ([]GetUsersRow, error) {
 		}
 		items = append(items, i)
 	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
@@ -558,22 +546,22 @@ SELECT um.user_id,
        u.is_owner
 FROM user_meetings um
          JOIN users u ON u.id = um.user_id
-WHERE um.meeting_id = ?
+WHERE um.meeting_id = $1
 ORDER BY um.user_id
 `
 
 type GetUsersMeetingsRow struct {
-	UserID    int64          `json:"user_id"`
-	MeetingID int64          `json:"meeting_id"`
-	Status    string         `json:"status"`
-	Count     sql.NullInt64  `json:"count"`
-	Username  string         `json:"username"`
-	Nickname  sql.NullString `json:"nickname"`
-	IsOwner   bool           `json:"is_owner"`
+	UserID    int64       `json:"user_id"`
+	MeetingID int64       `json:"meeting_id"`
+	Status    string      `json:"status"`
+	Count     pgtype.Int4 `json:"count"`
+	Username  string      `json:"username"`
+	Nickname  pgtype.Text `json:"nickname"`
+	IsOwner   bool        `json:"is_owner"`
 }
 
 func (q *Queries) GetUsersMeetings(ctx context.Context, meetingID int64) ([]GetUsersMeetingsRow, error) {
-	rows, err := q.db.QueryContext(ctx, getUsersMeetings, meetingID)
+	rows, err := q.db.Query(ctx, getUsersMeetings, meetingID)
 	if err != nil {
 		return nil, err
 	}
@@ -594,9 +582,6 @@ func (q *Queries) GetUsersMeetings(ctx context.Context, meetingID int64) ([]GetU
 		}
 		items = append(items, i)
 	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
@@ -605,9 +590,9 @@ func (q *Queries) GetUsersMeetings(ctx context.Context, meetingID int64) ([]GetU
 
 const updateChatMeeting = `-- name: UpdateChatMeeting :one
 UPDATE chat_meetings
-SET message_id=COALESCE(?1, message_id)
-WHERE meeting_id = ?2
-  and chat_id = ?3
+SET message_id=COALESCE($1, message_id)
+WHERE meeting_id = $2
+  and chat_id = $3
 RETURNING chat_id, meeting_id, message_id
 `
 
@@ -618,7 +603,7 @@ type UpdateChatMeetingParams struct {
 }
 
 func (q *Queries) UpdateChatMeeting(ctx context.Context, arg UpdateChatMeetingParams) (ChatMeeting, error) {
-	row := q.db.QueryRowContext(ctx, updateChatMeeting, arg.MessageID, arg.WhereMeetingID, arg.WhereChatID)
+	row := q.db.QueryRow(ctx, updateChatMeeting, arg.MessageID, arg.WhereMeetingID, arg.WhereChatID)
 	var i ChatMeeting
 	err := row.Scan(&i.ChatID, &i.MeetingID, &i.MessageID)
 	return i, err
@@ -626,8 +611,8 @@ func (q *Queries) UpdateChatMeeting(ctx context.Context, arg UpdateChatMeetingPa
 
 const updateMeetingStatus = `-- name: UpdateMeetingStatus :exec
 UPDATE meetings
-SET status = ?
-WHERE code = ?
+SET status = $1
+WHERE code = $2
 `
 
 type UpdateMeetingStatusParams struct {
@@ -636,49 +621,49 @@ type UpdateMeetingStatusParams struct {
 }
 
 func (q *Queries) UpdateMeetingStatus(ctx context.Context, arg UpdateMeetingStatusParams) error {
-	_, err := q.db.ExecContext(ctx, updateMeetingStatus, arg.Status, arg.Code)
+	_, err := q.db.Exec(ctx, updateMeetingStatus, arg.Status, arg.Code)
 	return err
 }
 
 const updateMeetingUpdate = `-- name: UpdateMeetingUpdate :exec
 UPDATE meetings
-SET updated_at = ?
-WHERE id = ?
+SET updated_at = $1
+WHERE id = $2
 `
 
 type UpdateMeetingUpdateParams struct {
-	UpdatedAt      time.Time `json:"updated_at"`
-	WhereMeetingID int64     `json:"where_meeting_id"`
+	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
+	WhereMeetingID int64              `json:"where_meeting_id"`
 }
 
 func (q *Queries) UpdateMeetingUpdate(ctx context.Context, arg UpdateMeetingUpdateParams) error {
-	_, err := q.db.ExecContext(ctx, updateMeetingUpdate, arg.UpdatedAt, arg.WhereMeetingID)
+	_, err := q.db.Exec(ctx, updateMeetingUpdate, arg.UpdatedAt, arg.WhereMeetingID)
 	return err
 }
 
 const updateUserMeetingCount = `-- name: UpdateUserMeetingCount :exec
 UPDATE user_meetings
-SET count = ?
-WHERE user_id = ?
-  AND meeting_id = ?
+SET count = $1
+WHERE user_id = $2
+  AND meeting_id = $3
 `
 
 type UpdateUserMeetingCountParams struct {
-	Count     sql.NullInt64 `json:"count"`
-	UserID    int64         `json:"user_id"`
-	MeetingID int64         `json:"meeting_id"`
+	Count     pgtype.Int4 `json:"count"`
+	UserID    int64       `json:"user_id"`
+	MeetingID int64       `json:"meeting_id"`
 }
 
 func (q *Queries) UpdateUserMeetingCount(ctx context.Context, arg UpdateUserMeetingCountParams) error {
-	_, err := q.db.ExecContext(ctx, updateUserMeetingCount, arg.Count, arg.UserID, arg.MeetingID)
+	_, err := q.db.Exec(ctx, updateUserMeetingCount, arg.Count, arg.UserID, arg.MeetingID)
 	return err
 }
 
 const updateUserMeetingStatus = `-- name: UpdateUserMeetingStatus :exec
 UPDATE user_meetings
-SET status = ?
-WHERE user_id = ?
-  AND meeting_id = ?
+SET status = $1
+WHERE user_id = $2
+  AND meeting_id = $3
 `
 
 type UpdateUserMeetingStatusParams struct {
@@ -688,22 +673,22 @@ type UpdateUserMeetingStatusParams struct {
 }
 
 func (q *Queries) UpdateUserMeetingStatus(ctx context.Context, arg UpdateUserMeetingStatusParams) error {
-	_, err := q.db.ExecContext(ctx, updateUserMeetingStatus, arg.Status, arg.UserID, arg.MeetingID)
+	_, err := q.db.Exec(ctx, updateUserMeetingStatus, arg.Status, arg.UserID, arg.MeetingID)
 	return err
 }
 
 const updateUsername = `-- name: UpdateUsername :exec
 UPDATE users
-SET username = ?
-WHERE id = ?
+SET username =  $1
+WHERE id = $2
 `
 
 type UpdateUsernameParams struct {
 	Username string `json:"username"`
-	ID       int64  `json:"id"`
+	UserID   int64  `json:"user_id"`
 }
 
 func (q *Queries) UpdateUsername(ctx context.Context, arg UpdateUsernameParams) error {
-	_, err := q.db.ExecContext(ctx, updateUsername, arg.Username, arg.ID)
+	_, err := q.db.Exec(ctx, updateUsername, arg.Username, arg.UserID)
 	return err
 }
