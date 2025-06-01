@@ -2,10 +2,21 @@
 version: '3'
 
 silent: true
+env:
+  POSTGRES_DB: "meetings"
+  POSTGRES_USER: "default"
+  POSTGRES_PASSWORD: "secret"
+  POSTGRES_PORT: "5432"
+  POSTGRES_VERSION: alpine
+  POSTGRES_ENTRYPOINT_INITDB: ./postgres/docker-entrypoint-initdb.d
+  DATA_PATH_HOST: ~/.laradock/data
+
+
+  DB_DSN: "postgres://{{.POSTGRES_USER}}:{{.POSTGRES_PASSWORD}}@localhost:{{.POSTGRES_PORT}}/{{.POSTGRES_DB}}?sslmode=disable"
 
 vars:
   DOCKER_COMPOSE_PATHS: |
-    -f ./deployments/local/docker-compose.yml
+    -f ./deploy/local/docker-compose.yml
   #    -f ./deployments/local/docker-compose.jasper.yml
   #    -f ./deployments/local/docker-compose.metrics.yml
   #    -f ./deployments/local/docker-compose.temporal.yml
@@ -34,8 +45,7 @@ vars:
 
   CLI_ARGS: -f ./deployments/local/docker-compose.yml
 
-  DB_DRIVER: sqlite
-  DB_DSN: file:./bot.db?_fk=1
+  DB_DRIVER: postgres
   MIGRATIONS_DIR: ./migrations
 
 tasks:
